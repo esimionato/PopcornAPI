@@ -1,4 +1,5 @@
 ﻿using StackExchange.Redis;
+using System;
 
 namespace PopcornApi.Services.Caching
 {
@@ -31,9 +32,10 @@ namespace PopcornApi.Services.Caching
         /// </summary>
         /// <param name="key">Key</param>
         /// <param name="value">Value</param>
-        public void SetCache(string key, string value)
+        /// <param name="expiry">Expiry</param>
+        public void SetCache(string key, string value, TimeSpan? expiry = null)
         {
-            _redisDatabase.StringSet(key, value);
+            _redisDatabase.StringSet(key, value, expiry);
         }
 
         /// <summary>

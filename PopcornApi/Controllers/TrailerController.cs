@@ -8,6 +8,7 @@ using YoutubeExtractor;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Cors;
 using PopcornApi.Models.Trailer;
+using System;
 
 namespace PopcornApi.Controllers
 {
@@ -122,7 +123,7 @@ namespace PopcornApi.Controllers
                 {
                     await Task.Run(() => DownloadUrlResolver.DecryptDownloadUrl(trailer));
                     var response = new TrailerResponse {TrailerUrl = trailer.DownloadUrl};
-                    _cachingService.SetCache(ytTrailerCode, JsonConvert.SerializeObject(response));
+                    _cachingService.SetCache(ytTrailerCode, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
                     return Json(response);
                 }
 
