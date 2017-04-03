@@ -134,14 +134,14 @@ namespace PopcornApi.Controllers
                     query = query.OrderByDescending(movie => movie.LastUpdated);
                 }
 
-                var count = query.Count();
+                var count = await query.CountAsync();
                 var skip = (currentPage - 1) * nbShowsPerPage;
                 if (count <= nbShowsPerPage)
                 {
                     skip = 0;
                 }
 
-                var result = query.Skip(skip).Take(nbShowsPerPage).ToList();
+                var result = await query.Skip(skip).Take(nbShowsPerPage).ToListAsync();
 
                 var response = new ShowResponse
                 {
@@ -164,7 +164,7 @@ namespace PopcornApi.Controllers
             {
                 using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
                 {
-                    var show = context.ShowSet.Include(a => a.Rating)
+                    var show = await context.ShowSet.Include(a => a.Rating)
                         .Include(a => a.Episodes)
                         .ThenInclude(episode => episode.Torrents)
                         .ThenInclude(torrent => torrent.Torrent0)
@@ -180,7 +180,7 @@ namespace PopcornApi.Controllers
                         .Include(a => a.Genres)
                         .Include(a => a.Images)
                         .Include(a => a.Similars).AsQueryable()
-                        .FirstOrDefault(a => a.ImdbId.ToLower() == imdb.ToLower());
+                        .FirstOrDefaultAsync(a => a.ImdbId.ToLower() == imdb.ToLower());
                     if (show == null) return BadRequest();
 
                     var showJson = ConvertShowToJson(show);

@@ -134,14 +134,14 @@ namespace PopcornApi.Controllers
                     query = query.OrderByDescending(movie => movie.LastUpdated);
                 }
 
-                var count = query.Count();
+                var count = await query.CountAsync();
                 var skip = (currentPage - 1) * nbAnimesPerPage;
                 if (count <= nbAnimesPerPage)
                 {
                     skip = 0;
                 }
 
-                var result = query.Skip(skip).Take(nbAnimesPerPage).ToList();
+                var result = await query.Skip(skip).Take(nbAnimesPerPage).ToListAsync();
 
                 var response = new AnimeResponse
                 {
@@ -164,7 +164,7 @@ namespace PopcornApi.Controllers
             {
                 using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
                 {
-                    var anime = context.AnimeSet.Include(a => a.Rating)
+                    var anime = await context.AnimeSet.Include(a => a.Rating)
                         .Include(a => a.Episodes)
                         .ThenInclude(episode => episode.Torrents)
                         .ThenInclude(torrent => torrent.Torrent0)
@@ -178,7 +178,7 @@ namespace PopcornApi.Controllers
                         .ThenInclude(episode => episode.Torrents)
                         .ThenInclude(torrent => torrent.Torrent720p)
                         .Include(a => a.Genres)
-                        .Include(a => a.Images).AsQueryable().FirstOrDefault(a => a.MalId.ToLower() == malid.ToLower());
+                        .Include(a => a.Images).AsQueryable().FirstOrDefaultAsync(a => a.MalId.ToLower() == malid.ToLower());
                     if (anime == null) return BadRequest();
 
                     var animeJson = ConvertAnimeToJson(anime);

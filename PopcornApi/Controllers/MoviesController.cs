@@ -129,14 +129,14 @@ namespace PopcornApi.Controllers
                     query = query.OrderByDescending(movie => movie.DateUploadedUnix);
                 }
 
-                var count = query.Count();
+                var count = await query.CountAsync();
                 var skip = (currentPage - 1) * nbMoviesPerPage;
                 if (count <= nbMoviesPerPage)
                 {
                     skip = 0;
                 }
 
-                var movies = query.Skip(skip).Take(nbMoviesPerPage).ToList();
+                var movies = await query.Skip(skip).Take(nbMoviesPerPage).ToListAsync();
                 var response = new MovieResponse
                 {
                     TotalMovies = count,
@@ -159,11 +159,11 @@ namespace PopcornApi.Controllers
                 using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
                 {
                     var movie =
-                        context.MovieSet.Include(a => a.Torrents)
+                        await context.MovieSet.Include(a => a.Torrents)
                             .Include(a => a.Cast)
                             .Include(a => a.Similars)
                             .Include(a => a.Genres).AsQueryable()
-                            .FirstOrDefault(
+                            .FirstOrDefaultAsync(
                                 document => document.ImdbCode.ToLower() == imdb.ToLower());
                     if (movie == null) return BadRequest();
 
