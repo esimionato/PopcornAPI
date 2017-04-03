@@ -23,7 +23,10 @@ namespace PopcornApi.Services.Caching
         /// </summary>
         public CachingService(string redisConnectionString)
         {
-            _connection = ConnectionMultiplexer.Connect(redisConnectionString);
+            var redisConfig = ConfigurationOptions.Parse(redisConnectionString);
+            redisConfig.SyncTimeout = 5000;
+             _connection = ConnectionMultiplexer.Connect(redisConfig);
+            _connection.IncludeDetailInExceptions = true;
             _redisDatabase = _connection.GetDatabase();
         }
 
