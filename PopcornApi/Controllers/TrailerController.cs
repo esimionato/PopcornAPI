@@ -130,7 +130,7 @@ namespace PopcornApi.Controllers
                 if (trailer != null && !trailer.RequiresDecryption)
                 {
                     var response = new TrailerResponse { TrailerUrl = trailer.DownloadUrl };
-                    _cachingService.SetCache(ytTrailerCode, JsonConvert.SerializeObject(response));
+                    _cachingService.SetCache(ytTrailerCode, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
                     return Json(response);
                 }
 

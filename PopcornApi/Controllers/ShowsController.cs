@@ -14,6 +14,7 @@ using PopcornApi.Models.Torrent.Show;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
 using Microsoft.AspNetCore.Cors;
+using System;
 
 namespace PopcornApi.Controllers
 {
@@ -55,6 +56,13 @@ namespace PopcornApi.Controllers
             if (page >= 1)
             {
                 currentPage = page;
+            }
+
+            var hash = $@"type=shows&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={query_term}&genre={genre}&sort_by={sort_by}";
+            var cachedShows = _cachingService.GetCache(hash);
+            if (cachedShows != null)
+            {
+                return Json(JsonConvert.DeserializeObject<ShowResponse>(cachedShows));
             }
 
             using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
@@ -135,12 +143,15 @@ namespace PopcornApi.Controllers
 
                 var result = query.Skip(skip).Take(nbShowsPerPage).ToList();
 
+                var response = new ShowResponse
+                {
+                    TotalShows = count,
+                    Shows = result.Select(ConvertShowToJson)
+                };
+
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
                 return
-                    Json(new ShowResponse
-                    {
-                        TotalShows = count,
-                        Shows = result.Select(ConvertShowToJson)
-                    });
+                    Json(response);
             }
         }
 

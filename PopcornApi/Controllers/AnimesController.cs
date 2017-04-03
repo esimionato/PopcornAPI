@@ -13,6 +13,7 @@ using PopcornApi.Models.Rating;
 using PopcornApi.Models.Torrent.Show;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
+using System;
 
 namespace PopcornApi.Controllers
 {
@@ -54,6 +55,13 @@ namespace PopcornApi.Controllers
             if (page >= 1)
             {
                 currentPage = page;
+            }
+
+            var hash = $@"type=animes&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={query_term}&genre={genre}&sort_by={sort_by}";
+            var cashedAnimes = _cachingService.GetCache(hash);
+            if (cashedAnimes != null)
+            {
+                return Json(JsonConvert.DeserializeObject<AnimeResponse>(cashedAnimes));
             }
 
             using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
@@ -135,12 +143,15 @@ namespace PopcornApi.Controllers
 
                 var result = query.Skip(skip).Take(nbAnimesPerPage).ToList();
 
+                var response = new AnimeResponse
+                {
+                    TotalAnimes = count,
+                    Animes = result.Select(ConvertAnimeToJson)
+                };
+
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
                 return
-                    Json(new AnimeResponse
-                    {
-                        TotalAnimes = count,
-                        Animes = result.Select(ConvertAnimeToJson)
-                    });
+                    Json(response);
             }
         }
 

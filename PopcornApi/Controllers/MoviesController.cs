@@ -12,6 +12,7 @@ using PopcornApi.Models.Movie;
 using PopcornApi.Models.Torrent.Movie;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
+using System;
 
 namespace PopcornApi.Controllers
 {
@@ -53,6 +54,13 @@ namespace PopcornApi.Controllers
             if (page >= 1)
             {
                 currentPage = page;
+            }
+
+            var hash = $@"type=movies&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={query_term}&genre={genre}&sort_by={sort_by}";
+            var cachedMovies = _cachingService.GetCache(hash);
+            if (cachedMovies != null)
+            {
+                return Json(JsonConvert.DeserializeObject<MovieResponse>(cachedMovies));
             }
 
             using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
@@ -129,12 +137,15 @@ namespace PopcornApi.Controllers
                 }
 
                 var movies = query.Skip(skip).Take(nbMoviesPerPage).ToList();
+                var response = new MovieResponse
+                {
+                    TotalMovies = count,
+                    Movies = movies.Select(ConvertMovieToJson)
+                };
+
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
                 return
-                    Json(new MovieResponse
-                    {
-                        TotalMovies = count,
-                        Movies = movies.Select(ConvertMovieToJson)
-                    });
+                    Json(response);
             }
         }
 
