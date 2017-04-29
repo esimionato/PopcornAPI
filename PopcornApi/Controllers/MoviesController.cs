@@ -82,7 +82,7 @@ namespace PopcornApi.Controllers
                     query =
                         query.Where(
                             movie =>
-                                query_term.ToLower().Contains(movie.Title.ToLower()));
+                                movie.Title.ToLower().Contains(query_term.ToLower()));
                 }
 
                 if (!string.IsNullOrWhiteSpace(genre))
