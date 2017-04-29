@@ -149,7 +149,7 @@ namespace PopcornApi.Controllers
                     Shows = result.Select(ConvertShowToJson)
                 };
 
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
                 return
                     Json(response);
             }

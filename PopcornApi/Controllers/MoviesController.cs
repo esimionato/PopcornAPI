@@ -82,7 +82,7 @@ namespace PopcornApi.Controllers
                     query =
                         query.Where(
                             movie =>
-                                movie.Title.ToLower().Contains(query_term.ToLower()));
+                                query_term.ToLower().Contains(movie.Title.ToLower()));
                 }
 
                 if (!string.IsNullOrWhiteSpace(genre))
@@ -143,7 +143,7 @@ namespace PopcornApi.Controllers
                     Movies = movies.Select(ConvertMovieToJson)
                 };
 
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromHours(6));
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
                 return
                     Json(response);
             }

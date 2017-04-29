@@ -6,28 +6,8 @@
     public class Constants
     {
         /// <summary>
-        /// MongoDb Database to use as export
+        /// Client ID for TMDb
         /// </summary>
-        public const string DatabaseName = "popcorn";
-
-        /// <summary>
-        /// Shows collection name
-        /// </summary>
-        public const string ShowsCollectionName = "shows";
-
-        /// <summary>
-        /// Anime collection name
-        /// </summary>
-        public const string AnimeCollectionName = "anime";
-
-        /// <summary>
-        /// Movies collection name
-        /// </summary>
-        public const string MoviesCollectionName = "movies";
-
-        /// <summary>
-        /// MongoDb assets folder
-        /// </summary>
-        public const string AssetsFolder = "assets";
+        public const string TmDbClientId = "a21fe922d3bac6654e93450e9a18af1c";
     }
 }
