@@ -39,29 +39,22 @@ namespace PopcornApi.Controllers
         [HttpGet("{ytTrailerCode}")]
         public async Task<IActionResult> Get(string ytTrailerCode)
         {
-            var cachedTrailer = _cachingService.GetCache(ytTrailerCode);
-            if (cachedTrailer == null)
+            using (var service = Client.For(YouTube.Default))
             {
-                using (var service = Client.For(YouTube.Default))
+                var videos = await service.GetAllVideosAsync("https://youtube.com/watch?v=" + ytTrailerCode);
+                if (videos != null && videos.Any())
                 {
-                    var videos = await service.GetAllVideosAsync("https://youtube.com/watch?v=" + ytTrailerCode);
-                    if (videos != null && videos.Any())
-                    {
-                        var trailer = videos.FirstOrDefault(a => a.Format == VideoFormat.Mp4 && !a.Is3D && a.Resolution == 720);
-                        if (trailer == null)
-                            return BadRequest();
+                    var trailer =
+                        videos.FirstOrDefault(a => a.Format == VideoFormat.Mp4 && !a.Is3D && a.Resolution == 720);
+                    if (trailer == null)
+                        return BadRequest();
 
-                        var response = new TrailerResponse {TrailerUrl = await trailer.GetUriAsync()};
-                        _cachingService.SetCache(ytTrailerCode, JsonConvert.SerializeObject(response),
-                            TimeSpan.FromDays(180));
-                        return Json(response);
-                    }
-
-                    return BadRequest();
+                    var response = new TrailerResponse {TrailerUrl = await trailer.GetUriAsync()};
+                    return Json(response);
                 }
-            }
 
-            return Json(JsonConvert.DeserializeObject<TrailerResponse>(cachedTrailer));
+                return BadRequest();
+            }
         }
     }
 }
