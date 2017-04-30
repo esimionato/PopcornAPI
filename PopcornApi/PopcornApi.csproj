@@ -24,11 +24,13 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="1.1.1" />
     <PackageReference Include="StackExchange.Redis" Version="1.2.1" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.1" />
-    <PackageReference Include="YoutubeExtractor" Version="0.10.11" />
     <PackageReference Include="Microsoft.AspNetCore.Cors" Version="1.1.1" />
   </ItemGroup>
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="1.0.0-msbuild3-final" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libvideo\libvideo.csproj" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services" />
