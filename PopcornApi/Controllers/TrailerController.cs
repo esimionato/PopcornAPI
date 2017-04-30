@@ -47,10 +47,10 @@ namespace PopcornApi.Controllers
                     var videos = await service.GetAllVideosAsync("https://youtube.com/watch?v=" + ytTrailerCode);
                     if (videos != null && videos.Any())
                     {
-                        var trailer = videos.Where(a => a.Format == VideoFormat.Mp4 && !a.Is3D)
-                            .Aggregate((trailer1, trailer2) => trailer1.Resolution > trailer2.Resolution
-                                ? trailer1
-                                : trailer2);
+                        var trailer = videos.FirstOrDefault(a => a.Format == VideoFormat.Mp4 && !a.Is3D && a.Resolution == 720);
+                        if (trailer == null)
+                            return BadRequest();
+
                         var response = new TrailerResponse {TrailerUrl = await trailer.GetUriAsync()};
                         _cachingService.SetCache(ytTrailerCode, JsonConvert.SerializeObject(response),
                             TimeSpan.FromDays(180));
