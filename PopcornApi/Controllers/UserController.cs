@@ -176,7 +176,7 @@ namespace PopcornApi.Controllers
                     ImdbId = a.ImdbId,
                     Seen = a.Seen
                 }).ToList(),
-                MovieHistory = user.ShowHistory.Select(a => new MovieHistoryJson
+                MovieHistory = user.MovieHistory.Select(a => new MovieHistoryJson
                 {
                     Favorite = a.Favorite,
                     ImdbId = a.ImdbId,
