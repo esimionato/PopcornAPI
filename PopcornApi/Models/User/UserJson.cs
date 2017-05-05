@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace PopcornApi.Models.User
@@ -16,6 +14,12 @@ namespace PopcornApi.Models.User
 
         [JsonProperty("UploadLimit")]
         public int UploadLimit { get; set; }
+
+        [JsonProperty("DefaultHdQuality")]
+        public bool DefaultHdQuality { get; set; }
+
+        [JsonProperty("DefaultSubtitleLanguage")]
+        public string DefaultSubtitleLanguage { get; set; }
 
         [JsonProperty("Language")]
         public LanguageJson Language { get; set; }

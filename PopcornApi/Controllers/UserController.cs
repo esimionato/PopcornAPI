@@ -60,7 +60,9 @@ namespace PopcornApi.Controllers
                             MovieHistory = new List<MovieHistory>(),
                             ShowHistory = new List<ShowHistory>(),
                             DownloadLimit = 0,
-                            UploadLimit = 0
+                            UploadLimit = 0,
+                            DefaultHdQuality = false,
+                            DefaultSubtitleLanguage = string.Empty
                         });
 
                         await context.SaveChangesAsync();
@@ -74,7 +76,9 @@ namespace PopcornApi.Controllers
                             MovieHistory = new List<MovieHistoryJson>(),
                             ShowHistory = new List<ShowHistoryJson>(),
                             DownloadLimit = 0,
-                            UploadLimit = 0
+                            UploadLimit = 0,
+                            DefaultHdQuality = false,
+                            DefaultSubtitleLanguage = string.Empty
                         };
 
                         return Ok(response);
@@ -109,6 +113,8 @@ namespace PopcornApi.Controllers
                 user.DownloadLimit = userJson.DownloadLimit;
                 user.UploadLimit = userJson.UploadLimit;
                 user.Language.Culture = userJson.Language.Culture;
+                user.DefaultHdQuality = userJson.DefaultHdQuality;
+                user.DefaultSubtitleLanguage = userJson.DefaultSubtitleLanguage;
                 foreach (var showHistory in user.ShowHistory.Where(
                     a => userJson.ShowHistory.Any(b => b.ImdbId == a.ImdbId)))
                 {
@@ -166,6 +172,8 @@ namespace PopcornApi.Controllers
                 MachineGuid = user.MachineGuid,
                 DownloadLimit = user.DownloadLimit,
                 UploadLimit = user.UploadLimit,
+                DefaultHdQuality = user.DefaultHdQuality,
+                DefaultSubtitleLanguage = user.DefaultSubtitleLanguage,
                 Language = new LanguageJson
                 {
                     Culture = user.Language.Culture
