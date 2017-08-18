@@ -38,7 +38,14 @@ namespace PopcornApi.Services.Caching
         /// <param name="expiry">Expiry</param>
         public void SetCache(string key, string value, TimeSpan? expiry = null)
         {
-            _redisDatabase.StringSet(key, value, expiry);
+            try
+            {
+                _redisDatabase.StringSet(key, value, expiry);
+            }
+            catch (Exception ex)
+            {
+                
+            }
         }
 
         /// <summary>

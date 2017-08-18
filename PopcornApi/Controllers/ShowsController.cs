@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Newtonsoft.Json;
 using PopcornApi.Attributes;
 using PopcornApi.Database;
@@ -13,8 +12,12 @@ using PopcornApi.Models.Show;
 using PopcornApi.Models.Torrent.Show;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
-using Microsoft.AspNetCore.Cors;
 using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Text;
+using System.Threading;
+using PopcornApi.Extensions;
 
 namespace PopcornApi.Controllers
 {
@@ -58,48 +61,82 @@ namespace PopcornApi.Controllers
                 currentPage = page;
             }
 
-            var hash = $@"type=shows&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={query_term}&genre={genre}&sort_by={sort_by}";
-            var cachedShows = _cachingService.GetCache(hash);
-            if (cachedShows != null)
+            var queryTerm = string.Empty;
+            if (!string.IsNullOrWhiteSpace(query_term))
             {
-                return Json(JsonConvert.DeserializeObject<ShowResponse>(cachedShows));
+                queryTerm = query_term;
             }
 
-            using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
+            var genreFilter = string.Empty;
+            if (!string.IsNullOrWhiteSpace(genre))
             {
-                var query = context.ShowSet.Include(show => show.Rating)
-                    .Include(show => show.Episodes)
-                    .ThenInclude(episode => episode.Torrents)
-                    .ThenInclude(torrent => torrent.Torrent0)
-                    .Include(show => show.Episodes)
-                    .ThenInclude(episode => episode.Torrents)
-                    .ThenInclude(torrent => torrent.Torrent1080p)
-                    .Include(show => show.Episodes)
-                    .ThenInclude(episode => episode.Torrents)
-                    .ThenInclude(torrent => torrent.Torrent480p)
-                    .Include(show => show.Episodes)
-                    .ThenInclude(episode => episode.Torrents)
-                    .ThenInclude(torrent => torrent.Torrent720p)
-                    .Include(show => show.Genres)
-                    .Include(show => show.Images)
-                    .Include(show => show.Similars).AsQueryable();
+                genreFilter = genre;
+            }
 
-                if (minimum_rating > 0 && minimum_rating < 100)
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(
+                    $@"type=shows&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={
+                            query_term
+                        }&genre={genre}&sort_by={sort_by}"));
+            try
+            {
+                var cachedShows = _cachingService.GetCache(hash);
+                if (cachedShows != null)
                 {
-                    query = query.Where(show => show.Rating.Percentage > minimum_rating);
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<ShowLightResponse>(cachedShows));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbShowsPerPage);
+                var takeParameter = new SqlParameter("@take", nbShowsPerPage);
+                var ratingParameter = new SqlParameter("@rating", minimum_rating);
+                var queryParameter = new SqlParameter("@Keywords", queryTerm);
+                var genreParameter = new SqlParameter("@genre", genreFilter);
+                var query = @"
+                    SELECT 
+                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Fanart, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames, COUNT(*) OVER () as TotalCount
+                    FROM 
+                        ShowSet AS Show
+                    INNER JOIN 
+                        ImageShowSet AS Image
+                    ON 
+                        Image.Id = Show.ImagesId
+                    INNER JOIN 
+                        RatingSet AS Rating
+                    ON 
+                        Rating.Id = Show.RatingId
+                    WHERE
+                        1 = 1";
+
+                if (minimum_rating > 0 && minimum_rating < 10)
+                {
+                    query += @" AND
+                        Rating >= @rating";
                 }
 
                 if (!string.IsNullOrWhiteSpace(query_term))
                 {
-                    query =
-                        query.Where(
-                            show =>
-                                show.Title.ToLower().Contains(query_term.ToLower()));
+                    query += @" AND
+                        FREETEXT(Title, @Keywords)";
                 }
 
                 if (!string.IsNullOrWhiteSpace(genre))
                 {
-                    query = query.Where(show => show.Genres.Any(a => a.Name.ToLower().Contains(genre.ToLower())));
+                    query += @" AND
+                        CONTAINS(GenreNames, @genre)";
                 }
 
                 if (!string.IsNullOrWhiteSpace(sort_by))
@@ -107,46 +144,78 @@ namespace PopcornApi.Controllers
                     switch (sort_by)
                     {
                         case "title":
-                            query = query.OrderBy(show => show.Title);
+                            query += " ORDER BY Show.Title ASC";
                             break;
                         case "year":
-                            query = query.OrderByDescending(show => show.Year);
+                            query += " ORDER BY Show.Year DESC";
                             break;
                         case "rating":
-                            query = query.OrderByDescending(show => show.Rating.Percentage);
+                            query += " ORDER BY Rating.Percentage DESC";
                             break;
                         case "loved":
-                            query = query.OrderByDescending(show => show.Rating.Loved);
+                            query += " ORDER BY Rating.Loved DESC";
                             break;
                         case "votes":
-                            query = query.OrderByDescending(show => show.Rating.Votes);
+                            query += " ORDER BY Rating.Votes DESC";
                             break;
                         case "watching":
-                            query = query.OrderByDescending(show => show.Rating.Watching);
+                            query += " ORDER BY Rating.Watching DESC";
                             break;
                         case "date_added":
-                            query = query.OrderByDescending(show => show.LastUpdated);
+                            query += " ORDER BY Show.LastUpdated DESC";
+                            break;
+                        default:
+                            query += " ORDER BY Show.LastUpdated DESC";
                             break;
                     }
                 }
                 else
                 {
-                    query = query.OrderByDescending(movie => movie.LastUpdated);
+                    query += " ORDER BY Show.LastUpdated DESC";
                 }
 
-                var count = await query.CountAsync();
-                var skip = (currentPage - 1) * nbShowsPerPage;
-                if (count <= nbShowsPerPage)
+                query += @" OFFSET @skip ROWS 
+                    FETCH NEXT @take ROWS ONLY";
+
+                var showsQuery = await context.Database.ExecuteSqlQueryAsync(query, new CancellationToken(),
+                    skipParameter, takeParameter,
+                    ratingParameter, queryParameter,
+                    genreParameter);
+                var reader = showsQuery.DbDataReader;
+                var count = 0;
+                var shows = new List<ShowLightJson>();
+                while (await reader.ReadAsync())
                 {
-                    skip = 0;
+                    var show = new ShowLightJson
+                    {
+                        Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty,
+                        Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0,
+                        Rating = new RatingJson
+                        {
+                            Percentage = reader[2].GetType() != typeof(DBNull) ? (int) reader[2] : 0,
+                            Loved = reader[3].GetType() != typeof(DBNull) ? (int) reader[3] : 0,
+                            Votes = reader[4].GetType() != typeof(DBNull) ? (int) reader[4] : 0,
+                            Hated = reader[5].GetType() != typeof(DBNull) ? (int) reader[5] : 0,
+                            Watching = reader[6].GetType() != typeof(DBNull) ? (int) reader[6] : 0
+                        },
+                        Images = new ImageShowJson
+                        {
+                            Banner = reader[8].GetType() != typeof(DBNull) ? (string) reader[8] : string.Empty,
+                            Fanart = reader[9].GetType() != typeof(DBNull) ? (string) reader[9] : string.Empty,
+                            Poster = reader[10].GetType() != typeof(DBNull) ? (string) reader[10] : string.Empty,
+                        },
+                        ImdbId = reader[11].GetType() != typeof(DBNull) ? (string) reader[11] : string.Empty,
+                        TvdbId = reader[12].GetType() != typeof(DBNull) ? (string) reader[12] : string.Empty,
+                        Genres = reader[13].GetType() != typeof(DBNull) ? (string) reader[13] : string.Empty
+                    };
+                    shows.Add(show);
+                    count = reader[14].GetType() != typeof(DBNull) ? (int) reader[14] : 0;
                 }
 
-                var result = await query.Skip(skip).Take(nbShowsPerPage).ToListAsync();
-
-                var response = new ShowResponse
+                var response = new ShowLightResponse
                 {
                     TotalShows = count,
-                    Shows = result.Select(ConvertShowToJson)
+                    Shows = shows
                 };
 
                 _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
@@ -155,41 +224,135 @@ namespace PopcornApi.Controllers
             }
         }
 
+        // GET api/shows/light/tt3640424
+        [HttpGet("light/{imdb}")]
+        public async Task<IActionResult> GetLight(string imdb)
+        {
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"light:{imdb}"));
+            try
+            {
+                var cachedShow = _cachingService.GetCache(hash);
+                if (cachedShow != null)
+                {
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<ShowLightJson>(cachedShow));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var imdbParameter = new SqlParameter("@imdbId", imdb);
+                var query = @"
+                    SELECT 
+                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Fanart, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames
+                    FROM 
+                        ShowSet AS Show
+                    INNER JOIN 
+                        ImageShowSet AS Image
+                    ON 
+                        Image.Id = Show.ImagesId
+                    INNER JOIN 
+                        RatingSet AS Rating
+                    ON 
+                        Rating.Id = Show.RatingId
+                    WHERE
+                        Show.ImdbId = @imdbId";
+                var showQuery =
+                    await context.Database.ExecuteSqlQueryAsync(query, new CancellationToken(), imdbParameter);
+                var reader = showQuery.DbDataReader;
+                var show = new ShowLightJson();
+                while (await reader.ReadAsync())
+                {
+                    show.Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty;
+                    show.Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0;
+                    show.Rating = new RatingJson
+                    {
+                        Percentage = reader[2].GetType() != typeof(DBNull) ? (int) reader[2] : 0,
+                        Loved = reader[3].GetType() != typeof(DBNull) ? (int) reader[3] : 0,
+                        Votes = reader[4].GetType() != typeof(DBNull) ? (int) reader[4] : 0,
+                        Hated = reader[5].GetType() != typeof(DBNull) ? (int) reader[5] : 0,
+                        Watching = reader[6].GetType() != typeof(DBNull) ? (int) reader[6] : 0
+                    };
+                    show.Images = new ImageShowJson
+                    {
+                        Banner = reader[8].GetType() != typeof(DBNull) ? (string) reader[8] : string.Empty,
+                        Fanart = reader[9].GetType() != typeof(DBNull) ? (string) reader[9] : string.Empty,
+                        Poster = reader[10].GetType() != typeof(DBNull) ? (string) reader[10] : string.Empty
+                    };
+                    show.ImdbId = reader[11].GetType() != typeof(DBNull) ? (string) reader[11] : string.Empty;
+                    show.TvdbId = reader[12].GetType() != typeof(DBNull) ? (string) reader[12] : string.Empty;
+                    show.Genres = reader[13].GetType() != typeof(DBNull) ? (string) reader[13] : string.Empty;
+                }
+
+                if (string.IsNullOrEmpty(show.ImdbId))
+                    return BadRequest();
+
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(show));
+                return Json(show);
+            }
+        }
+
         // GET api/shows/tt3640424
         [HttpGet("{imdb}")]
         public async Task<IActionResult> Get(string imdb)
         {
-            var cachedShow = _cachingService.GetCache(imdb);
-            if (cachedShow == null)
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(imdb));
+            try
             {
-                using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
+                var cachedShow = _cachingService.GetCache(hash);
+                if (cachedShow != null)
                 {
-                    var show = await context.ShowSet.Include(a => a.Rating)
-                        .Include(a => a.Episodes)
-                        .ThenInclude(episode => episode.Torrents)
-                        .ThenInclude(torrent => torrent.Torrent0)
-                        .Include(a => a.Episodes)
-                        .ThenInclude(episode => episode.Torrents)
-                        .ThenInclude(torrent => torrent.Torrent1080p)
-                        .Include(a => a.Episodes)
-                        .ThenInclude(episode => episode.Torrents)
-                        .ThenInclude(torrent => torrent.Torrent480p)
-                        .Include(a => a.Episodes)
-                        .ThenInclude(episode => episode.Torrents)
-                        .ThenInclude(torrent => torrent.Torrent720p)
-                        .Include(a => a.Genres)
-                        .Include(a => a.Images)
-                        .Include(a => a.Similars).AsQueryable()
-                        .FirstOrDefaultAsync(a => a.ImdbId.ToLower() == imdb.ToLower());
-                    if (show == null) return BadRequest();
-
-                    var showJson = ConvertShowToJson(show);
-                    _cachingService.SetCache(imdb, JsonConvert.SerializeObject(showJson));
-                    return Json(showJson);
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<ShowJson>(cachedShow));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var show = await context.ShowSet.Include(a => a.Rating)
+                    .Include(a => a.Episodes)
+                    .ThenInclude(episode => episode.Torrents)
+                    .ThenInclude(torrent => torrent.Torrent0)
+                    .Include(a => a.Episodes)
+                    .ThenInclude(episode => episode.Torrents)
+                    .ThenInclude(torrent => torrent.Torrent1080p)
+                    .Include(a => a.Episodes)
+                    .ThenInclude(episode => episode.Torrents)
+                    .ThenInclude(torrent => torrent.Torrent480p)
+                    .Include(a => a.Episodes)
+                    .ThenInclude(episode => episode.Torrents)
+                    .ThenInclude(torrent => torrent.Torrent720p)
+                    .Include(a => a.Genres)
+                    .Include(a => a.Images)
+                    .Include(a => a.Similars).AsQueryable()
+                    .FirstOrDefaultAsync(a => a.ImdbId == imdb);
+                if (show == null) return BadRequest();
 
-            return Json(JsonConvert.DeserializeObject<ShowJson>(cachedShow));
+                var showJson = ConvertShowToJson(show);
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(showJson));
+                return Json(showJson);
+            }
         }
 
         /// <summary>

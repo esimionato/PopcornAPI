@@ -43,7 +43,7 @@ namespace PopcornApi.Controllers
             var guid = Guid.Empty;
             if (Guid.TryParse(userId, out guid))
             {
-                using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
+                using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
                 {
                     if (await context.UserSet.Include(a => a.ShowHistory)
                         .Include(a => a.MovieHistory)
@@ -99,7 +99,7 @@ namespace PopcornApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody]UserJson userJson)
         {
-            using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
             {
                 if (await context.UserSet.AllAsync(a => a.MachineGuid != userJson.MachineGuid))
                 {

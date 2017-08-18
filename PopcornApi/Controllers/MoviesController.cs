@@ -1,9 +1,7 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Newtonsoft.Json;
 using PopcornApi.Attributes;
 using PopcornApi.Database;
@@ -13,6 +11,11 @@ using PopcornApi.Models.Torrent.Movie;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
 using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Text;
+using System.Threading;
+using PopcornApi.Extensions;
 
 namespace PopcornApi.Controllers
 {
@@ -38,6 +41,7 @@ namespace PopcornApi.Controllers
         {
             _loggingService = loggingService;
             _cachingService = cachingService;
+
         }
 
         // GET api/movies
@@ -56,38 +60,80 @@ namespace PopcornApi.Controllers
                 currentPage = page;
             }
 
-            var hash = $@"type=movies&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={query_term}&genre={genre}&sort_by={sort_by}";
-            var cachedMovies = _cachingService.GetCache(hash);
-            if (cachedMovies != null)
+            var queryTerm = string.Empty;
+            if (!string.IsNullOrWhiteSpace(query_term))
             {
-                return Json(JsonConvert.DeserializeObject<MovieResponse>(cachedMovies));
+                queryTerm = query_term;
             }
 
-            using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
+            var genreFilter = string.Empty;
+            if (!string.IsNullOrWhiteSpace(genre))
             {
-                var query =
-                    context.MovieSet.Include(movie => movie.Torrents)
-                        .Include(movie => movie.Cast)
-                        .Include(movie => movie.Similars)
-                        .Include(movie => movie.Genres)
-                        .AsQueryable();
+                genreFilter = genre;
+            }
+
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(
+                    $@"type=movies&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={
+                            query_term
+                        }&genre={genre}&sort_by={sort_by}"));
+            try
+            {
+                var cachedMovies = _cachingService.GetCache(hash);
+                if (cachedMovies != null)
+                {
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<MovieLightResponse>(cachedMovies));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbMoviesPerPage);
+                var takeParameter = new SqlParameter("@take", nbMoviesPerPage);
+                var ratingParameter = new SqlParameter("@rating", minimum_rating);
+                var queryParameter = new SqlParameter("@Keywords", queryTerm);
+                var genreParameter = new SqlParameter("@genre", genreFilter);
+                var query = @"
+                    SELECT 
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount
+                    FROM 
+                        MovieSet AS Movie
+                    INNER JOIN
+                        TorrentMovieSet AS Torrent
+                    ON 
+                        Torrent.MovieId = Movie.Id
+                    AND 
+                        Torrent.Quality = '720p'
+                    WHERE
+                        1 = 1";
 
                 if (minimum_rating > 0 && minimum_rating < 10)
                 {
-                    query = query.Where(movie => movie.Rating > minimum_rating);
+                    query += @" AND
+                        Rating >= @rating";
                 }
 
                 if (!string.IsNullOrWhiteSpace(query_term))
                 {
-                    query =
-                        query.Where(
-                            movie =>
-                                movie.Title.ToLower().Contains(query_term.ToLower()));
+                    query += @" AND
+                        FREETEXT(Title, @Keywords)";
                 }
 
                 if (!string.IsNullOrWhiteSpace(genre))
                 {
-                    query = query.Where(movie => movie.Genres.Any(a => a.Name.ToLower().Contains(genre.ToLower())));
+                    query += @" AND
+                        CONTAINS(GenreNames, @genre)";
                 }
 
                 if (!string.IsNullOrWhiteSpace(sort_by))
@@ -95,52 +141,68 @@ namespace PopcornApi.Controllers
                     switch (sort_by)
                     {
                         case "title":
-                            query = query.OrderBy(movie => movie.Title);
+                            query += " ORDER BY Movie.Title ASC";
                             break;
                         case "year":
-                            query = query.OrderByDescending(movie => movie.Year);
+                            query += " ORDER BY Movie.Year DESC";
                             break;
                         case "rating":
-                            query = query.OrderByDescending(movie => movie.Rating);
+                            query += " ORDER BY Movie.Rating DESC";
                             break;
                         case "peers":
-                            query =
-                                query.OrderByDescending(
-                                    movie => movie.Torrents.Max(torrent => torrent.Peers));
+                            query += " ORDER BY Torrent.Peers DESC";
                             break;
                         case "seeds":
-                            query =
-                                query.OrderByDescending(
-                                    movie => movie.Torrents.Max(torrent => torrent.Seeds));
+                            query += " ORDER BY Torrent.Seeds DESC";
                             break;
                         case "download_count":
-                            query = query.OrderByDescending(movie => movie.DownloadCount);
+                            query += " ORDER BY Movie.DownloadCount DESC";
                             break;
                         case "like_count":
-                            query = query.OrderByDescending(movie => movie.LikeCount);
+                            query += " ORDER BY Movie.LikeCount DESC";
                             break;
                         case "date_added":
-                            query = query.OrderByDescending(movie => movie.DateUploadedUnix);
+                            query += " ORDER BY Movie.DateUploadedUnix DESC";
+                            break;
+                        default:
+                            query += " ORDER BY Movie.DateUploadedUnix DESC";
                             break;
                     }
                 }
                 else
                 {
-                    query = query.OrderByDescending(movie => movie.DateUploadedUnix);
+                    query += " ORDER BY Movie.DateUploadedUnix DESC";
                 }
 
-                var count = await query.CountAsync();
-                var skip = (currentPage - 1) * nbMoviesPerPage;
-                if (count <= nbMoviesPerPage)
+                query += @" OFFSET @skip ROWS 
+                    FETCH NEXT @take ROWS ONLY";
+
+                var moviesQuery = await context.Database.ExecuteSqlQueryAsync(query, new CancellationToken(),
+                    skipParameter, takeParameter,
+                    ratingParameter, queryParameter,
+                    genreParameter);
+                var reader = moviesQuery.DbDataReader;
+                var count = 0;
+                var movies = new List<MovieLightJson>();
+                while (await reader.ReadAsync())
                 {
-                    skip = 0;
+                    var movie = new MovieLightJson
+                    {
+                        Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty,
+                        Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0,
+                        Rating = reader[2].GetType() != typeof(DBNull) ? (double) reader[2] : 0d,
+                        PosterImage = reader[3].GetType() != typeof(DBNull) ? (string) reader[3] : string.Empty,
+                        ImdbCode = reader[4].GetType() != typeof(DBNull) ? (string) reader[4] : string.Empty,
+                        Genres = reader[5].GetType() != typeof(DBNull) ? (string) reader[5] : string.Empty
+                    };
+                    movies.Add(movie);
+                    count = reader[8].GetType() != typeof(DBNull) ? (int) reader[8] : 0;
                 }
 
-                var movies = await query.Skip(skip).Take(nbMoviesPerPage).ToListAsync();
-                var response = new MovieResponse
+                var response = new MovieLightResponse
                 {
                     TotalMovies = count,
-                    Movies = movies.Select(ConvertMovieToJson)
+                    Movies = movies
                 };
 
                 _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
@@ -149,31 +211,105 @@ namespace PopcornApi.Controllers
             }
         }
 
+        // GET api/movies/light/tt3640424
+        [HttpGet("light/{imdb}")]
+        public async Task<IActionResult> GetLight(string imdb)
+        {
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"light:{imdb}"));
+            try
+            {
+                var cachedMovie = _cachingService.GetCache(hash);
+                if (cachedMovie != null)
+                {
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<MovieLightJson>(cachedMovie));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var imdbParameter = new SqlParameter("@imdbCode", imdb);
+                var query = @"
+                    SELECT 
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames
+                    FROM 
+                        MovieSet AS Movie
+                    WHERE
+                        Movie.ImdbCode = @imdbCode";
+                var movieQuery =
+                    await context.Database.ExecuteSqlQueryAsync(query, new CancellationToken(), imdbParameter);
+                var reader = movieQuery.DbDataReader;
+                var movie = new MovieLightJson();
+                while (await reader.ReadAsync())
+                {
+                    movie.Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty;
+                    movie.Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0;
+                    movie.Rating = reader[2].GetType() != typeof(DBNull) ? (double) reader[2] : 0d;
+                    movie.PosterImage = reader[3].GetType() != typeof(DBNull) ? (string) reader[3] : string.Empty;
+                    movie.ImdbCode = reader[4].GetType() != typeof(DBNull) ? (string) reader[4] : string.Empty;
+                    movie.Genres = reader[5].GetType() != typeof(DBNull) ? (string) reader[5] : string.Empty;
+                }
+
+                if (string.IsNullOrEmpty(movie.ImdbCode))
+                    return BadRequest();
+
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(movie));
+                return Json(movie);
+            }
+        }
+
         // GET api/movies/tt3640424
         [HttpGet("{imdb}")]
         public async Task<IActionResult> Get(string imdb)
         {
-            var cachedMovie = _cachingService.GetCache(imdb);
-            if (cachedMovie == null)
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"full:{imdb}"));
+            try
             {
-                using (var context = new PopcornContextFactory().Create(new DbContextFactoryOptions()))
+                var cachedMovie = _cachingService.GetCache(hash);
+                if (cachedMovie != null)
                 {
-                    var movie =
-                        await context.MovieSet.Include(a => a.Torrents)
-                            .Include(a => a.Cast)
-                            .Include(a => a.Similars)
-                            .Include(a => a.Genres).AsQueryable()
-                            .FirstOrDefaultAsync(
-                                document => document.ImdbCode.ToLower() == imdb.ToLower());
-                    if (movie == null) return BadRequest();
-
-                    var movieJson = ConvertMovieToJson(movie);
-                    _cachingService.SetCache(imdb, JsonConvert.SerializeObject(movieJson));
-                    return Json(movieJson);
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<MovieJson>(cachedMovie));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
 
-            return Json(JsonConvert.DeserializeObject<MovieJson>(cachedMovie));
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var movie =
+                    await context.MovieSet.Include(a => a.Torrents)
+                        .Include(a => a.Cast)
+                        .Include(a => a.Similars)
+                        .Include(a => a.Genres).AsQueryable()
+                        .FirstOrDefaultAsync(
+                            document => document.ImdbCode == imdb);
+                if (movie == null) return BadRequest();
+
+                var movieJson = ConvertMovieToJson(movie);
+                _cachingService.SetCache(hash, JsonConvert.SerializeObject(movieJson));
+                return Json(movieJson);
+            }
         }
 
         /// <summary>
