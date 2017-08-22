@@ -16,4 +16,4 @@ Azure Application Insights is used for logging.
 
 # Language and tools
 
-Created with ASP.NET Core SDK 1.1, Visual Studio 2017 and Resharper.
+Created with ASP.NET Core SDK 2.O, Visual Studio 2017 and Resharper.
