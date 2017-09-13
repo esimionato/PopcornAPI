@@ -16,6 +16,7 @@ using System.Data.SqlClient;
 using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
+using PopcornApi.Helpers;
 
 namespace PopcornApi.Controllers
 {
@@ -208,6 +209,115 @@ namespace PopcornApi.Controllers
                 _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
                 return
                     Json(response);
+            }
+        }
+
+        // GET api/similar
+        [HttpPost]
+        [Route("similar")]
+        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds, [RequiredFromQuery] int page, [FromQuery] int limit)
+        {
+            if (!imdbIds.Any())
+            {
+                return Json(new MovieLightResponse
+                {
+                    Movies = new List<MovieLightJson>(),
+                    TotalMovies = 0
+                });
+            }
+
+            var nbMoviesPerPage = 20;
+            if (limit >= 20 && limit <= 50)
+                nbMoviesPerPage = limit;
+
+            var currentPage = 1;
+            if (page >= 1)
+            {
+                currentPage = page;
+            }
+
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(
+                    $@"type=movies&page={page}&limit={limit}&imdbId={imdbIds}"));
+            try
+            {
+                var cachedMovies = _cachingService.GetCache(hash);
+                if (cachedMovies != null)
+                {
+                    try
+                    {
+                        return Json(JsonConvert.DeserializeObject<MovieLightResponse>(cachedMovies));
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbMoviesPerPage);
+                var takeParameter = new SqlParameter("@take", nbMoviesPerPage);
+                var query = @"
+                    SELECT DISTINCT
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount
+                    FROM 
+                        MovieSet AS Movie
+                    INNER JOIN
+                        TorrentMovieSet AS Torrent
+                    ON 
+                        Torrent.MovieId = Movie.Id
+                    INNER JOIN
+                        Similar
+                    ON 
+                        Similar.MovieId = Movie.Id
+                    AND 
+                        Torrent.Quality = '720p'
+                    WHERE
+                        Similar.TmdbId IN ({@imdbIds})
+                    ORDER BY Movie.Rating DESC";
+
+                query += @" OFFSET @skip ROWS 
+                    FETCH NEXT @take ROWS ONLY";
+
+                using (var cmd = new SqlCommand(query, new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
+                {
+                    cmd.AddArrayParameters(imdbIds, "@imdbIds");
+                    cmd.Parameters.Add(skipParameter);
+                    cmd.Parameters.Add(takeParameter);
+                    await cmd.Connection.OpenAsync();
+                    var reader = await cmd.ExecuteReaderAsync(new CancellationToken());
+                    var count = 0;
+                    var movies = new List<MovieLightJson>();
+                    while (await reader.ReadAsync())
+                    {
+                        var movie = new MovieLightJson
+                        {
+                            Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty,
+                            Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0,
+                            Rating = reader[2].GetType() != typeof(DBNull) ? (double) reader[2] : 0d,
+                            PosterImage = reader[3].GetType() != typeof(DBNull) ? (string) reader[3] : string.Empty,
+                            ImdbCode = reader[4].GetType() != typeof(DBNull) ? (string) reader[4] : string.Empty,
+                            Genres = reader[5].GetType() != typeof(DBNull) ? (string) reader[5] : string.Empty
+                        };
+                        movies.Add(movie);
+                        count = reader[8].GetType() != typeof(DBNull) ? (int) reader[8] : 0;
+                    }
+
+                    var response = new MovieLightResponse
+                    {
+                        TotalMovies = count,
+                        Movies = movies
+                    };
+                    _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
+                    return
+                        Json(response);
+                }
             }
         }
 

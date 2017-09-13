@@ -29,6 +29,25 @@ namespace PopcornApi.Extensions
             }
         }
 
+        public static async Task<RelationalDataReader> ExecuteCommandAsync(this DatabaseFacade databaseFacade,
+            RawSqlCommand rawSqlCommand,
+            CancellationToken cancellationToken = default(CancellationToken),
+            params object[] parameters)
+        {
+
+            var concurrencyDetector = databaseFacade.GetService<IConcurrencyDetector>();
+
+            using (concurrencyDetector.EnterCriticalSection())
+            {
+                return await rawSqlCommand
+                    .RelationalCommand
+                    .ExecuteReaderAsync(
+                        databaseFacade.GetService<IRelationalConnection>(),
+                        parameterValues: rawSqlCommand.ParameterValues,
+                        cancellationToken: cancellationToken);
+            }
+        }
+
         public static async Task<RelationalDataReader> ExecuteSqlQueryAsync(this DatabaseFacade databaseFacade,
             string sql,
             CancellationToken cancellationToken = default(CancellationToken),
