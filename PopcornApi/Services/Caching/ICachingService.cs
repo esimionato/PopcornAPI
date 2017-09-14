@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace PopcornApi.Services.Caching
 {
@@ -13,12 +14,12 @@ namespace PopcornApi.Services.Caching
         /// <param name="key">Key</param>
         /// <param name="value">Value</param>
         /// <param name="expiry">Expiry</param>
-        void SetCache(string key, string value, TimeSpan? expiry = null);
+        Task SetCache(string key, string value, TimeSpan? expiry = null);
 
         /// <summary>
         /// Cache
         /// </summary>
         /// <param name="key">Key</param>
-        string GetCache(string key);
+        Task<string> GetCache(string key);
     }
 }

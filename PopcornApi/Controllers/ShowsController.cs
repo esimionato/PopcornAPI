@@ -80,7 +80,7 @@ namespace PopcornApi.Controllers
                         }&genre={genre}&sort_by={sort_by}"));
             try
             {
-                var cachedShows = _cachingService.GetCache(hash);
+                var cachedShows = await _cachingService.GetCache(hash);
                 if (cachedShows != null)
                 {
                     try
@@ -218,7 +218,7 @@ namespace PopcornApi.Controllers
                     Shows = shows
                 };
 
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
+                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
                 return
                     Json(response);
             }
@@ -232,7 +232,7 @@ namespace PopcornApi.Controllers
                 Encoding.UTF8.GetBytes($"light:{imdb}"));
             try
             {
-                var cachedShow = _cachingService.GetCache(hash);
+                var cachedShow = await _cachingService.GetCache(hash);
                 if (cachedShow != null)
                 {
                     try
@@ -298,7 +298,7 @@ namespace PopcornApi.Controllers
                 if (string.IsNullOrEmpty(show.ImdbId))
                     return BadRequest();
 
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(show));
+                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(show));
                 return Json(show);
             }
         }
@@ -311,7 +311,7 @@ namespace PopcornApi.Controllers
                 Encoding.UTF8.GetBytes(imdb));
             try
             {
-                var cachedShow = _cachingService.GetCache(hash);
+                var cachedShow = await _cachingService.GetCache(hash);
                 if (cachedShow != null)
                 {
                     try
@@ -350,7 +350,7 @@ namespace PopcornApi.Controllers
                 if (show == null) return BadRequest();
 
                 var showJson = ConvertShowToJson(show);
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(showJson));
+                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(showJson));
                 return Json(showJson);
             }
         }

@@ -80,7 +80,7 @@ namespace PopcornApi.Controllers
                         }&genre={genre}&sort_by={sort_by}"));
             try
             {
-                var cachedMovies = _cachingService.GetCache(hash);
+                var cachedMovies = await _cachingService.GetCache(hash);
                 if (cachedMovies != null)
                 {
                     try
@@ -206,7 +206,7 @@ namespace PopcornApi.Controllers
                     Movies = movies
                 };
 
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
+                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
                 return
                     Json(response);
             }
@@ -241,7 +241,7 @@ namespace PopcornApi.Controllers
                     $@"type=movies&page={page}&limit={limit}&imdbId={imdbIds}"));
             try
             {
-                var cachedMovies = _cachingService.GetCache(hash);
+                var cachedMovies = await _cachingService.GetCache(hash);
                 if (cachedMovies != null)
                 {
                     try
@@ -314,7 +314,7 @@ namespace PopcornApi.Controllers
                         TotalMovies = count,
                         Movies = movies
                     };
-                    _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
+                    await _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
                     return
                         Json(response);
                 }
@@ -329,7 +329,7 @@ namespace PopcornApi.Controllers
                 Encoding.UTF8.GetBytes($"light:{imdb}"));
             try
             {
-                var cachedMovie = _cachingService.GetCache(hash);
+                var cachedMovie = await _cachingService.GetCache(hash);
                 if (cachedMovie != null)
                 {
                     try
@@ -374,7 +374,7 @@ namespace PopcornApi.Controllers
                 if (string.IsNullOrEmpty(movie.ImdbCode))
                     return BadRequest();
 
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(movie));
+                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(movie));
                 return Json(movie);
             }
         }
@@ -387,7 +387,7 @@ namespace PopcornApi.Controllers
                 Encoding.UTF8.GetBytes($"full:{imdb}"));
             try
             {
-                var cachedMovie = _cachingService.GetCache(hash);
+                var cachedMovie = await _cachingService.GetCache(hash);
                 if (cachedMovie != null)
                 {
                     try
@@ -417,7 +417,7 @@ namespace PopcornApi.Controllers
                 if (movie == null) return BadRequest();
 
                 var movieJson = ConvertMovieToJson(movie);
-                _cachingService.SetCache(hash, JsonConvert.SerializeObject(movieJson));
+                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(movieJson));
                 return Json(movieJson);
             }
         }

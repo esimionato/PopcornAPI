@@ -1,5 +1,6 @@
 ﻿using StackExchange.Redis;
 using System;
+using System.Threading.Tasks;
 
 namespace PopcornApi.Services.Caching
 {
@@ -36,13 +37,13 @@ namespace PopcornApi.Services.Caching
         /// <param name="key">Key</param>
         /// <param name="value">Value</param>
         /// <param name="expiry">Expiry</param>
-        public void SetCache(string key, string value, TimeSpan? expiry = null)
+        public async Task SetCache(string key, string value, TimeSpan? expiry = null)
         {
             try
             {
-                _redisDatabase.StringSet(key, value, expiry);
+                await _redisDatabase.StringSetAsync(key, value, expiry);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 
             }
@@ -52,9 +53,9 @@ namespace PopcornApi.Services.Caching
         /// Cache
         /// </summary>
         /// <param name="key">Key</param>
-        public string GetCache(string key)
+        public async Task<string> GetCache(string key)
         {
-            return _redisDatabase.StringGet(key);
+            return await _redisDatabase.StringGetAsync(key);
         }
     }
 }
