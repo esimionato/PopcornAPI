@@ -238,7 +238,7 @@ namespace PopcornApi.Controllers
 
             var hash = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(
-                    $@"type=movies&page={page}&limit={limit}&imdbId={imdbIds}"));
+                    $@"type=movies&page={page}&limit={limit}&imdbId={string.Join(',', imdbIds)}"));
             try
             {
                 var cachedMovies = await _cachingService.GetCache(hash);
