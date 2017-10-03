@@ -1,32 +1,33 @@
-﻿using Newtonsoft.Json;
+﻿using System.Runtime.Serialization;
+using Newtonsoft.Json;
 using PopcornApi.Models.Torrent.Show;
 
 namespace PopcornApi.Models.Episode
 {
     public class EpisodeShowJson
     {
-        [JsonProperty("torrents")]
+        [DataMember(Name = "torrents")]
         public TorrentShowNodeJson Torrents { get; set; }
 
-        [JsonProperty("first_aired")]
+        [DataMember(Name = "first_aired")]
         public long FirstAired { get; set; }
 
-        [JsonProperty("date_based")]
+        [DataMember(Name = "date_based")]
         public bool DateBased { get; set; }
 
-        [JsonProperty("overview")]
+        [DataMember(Name = "overview")]
         public string Overview { get; set; }
 
-        [JsonProperty("title")]
+        [DataMember(Name = "title")]
         public string Title { get; set; }
 
-        [JsonProperty("episode")]
+        [DataMember(Name = "episode")]
         public int EpisodeNumber { get; set; }
 
-        [JsonProperty("season")]
+        [DataMember(Name = "season")]
         public int Season { get; set; }
 
-        [JsonProperty("tvdb_id")]
+        [DataMember(Name = "tvdb_id")]
         public int? TvdbId { get; set; }
     }
 }

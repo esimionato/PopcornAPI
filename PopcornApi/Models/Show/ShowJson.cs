@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using PopcornApi.Models.Episode;
 using PopcornApi.Models.Image;
@@ -8,61 +9,61 @@ namespace PopcornApi.Models.Show
 {
     public class ShowJson
     {
-        [JsonProperty("imdb_id")]
+        [DataMember(Name = "imdb_id")]
         public string ImdbId { get; set; }
 
-        [JsonProperty("tvdb_id")]
+        [DataMember(Name = "tvdb_id")]
         public string TvdbId { get; set; }
 
-        [JsonProperty("title")]
+        [DataMember(Name = "title")]
         public string Title { get; set; }
 
-        [JsonProperty("year")]
+        [DataMember(Name = "year")]
         public int Year { get; set; }
 
-        [JsonProperty("slug")]
+        [DataMember(Name = "slug")]
         public string Slug { get; set; }
 
-        [JsonProperty("synopsis")]
+        [DataMember(Name = "synopsis")]
         public string Synopsis { get; set; }
 
-        [JsonProperty("runtime")]
+        [DataMember(Name = "runtime")]
         public string Runtime { get; set; }
 
-        [JsonProperty("country")]
+        [DataMember(Name = "country")]
         public string Country { get; set; }
 
-        [JsonProperty("network")]
+        [DataMember(Name = "network")]
         public string Network { get; set; }
 
-        [JsonProperty("air_day")]
+        [DataMember(Name = "air_day")]
         public string AirDay { get; set; }
 
-        [JsonProperty("air_time")]
+        [DataMember(Name = "air_time")]
         public string AirTime { get; set; }
 
-        [JsonProperty("status")]
+        [DataMember(Name = "status")]
         public string Status { get; set; }
 
-        [JsonProperty("num_seasons")]
+        [DataMember(Name = "num_seasons")]
         public int NumSeasons { get; set; }
 
-        [JsonProperty("last_updated")]
+        [DataMember(Name = "last_updated")]
         public long LastUpdated { get; set; }
 
-        [JsonProperty("episodes")]
+        [DataMember(Name = "episodes")]
         public List<EpisodeShowJson> Episodes { get; set; }
 
-        [JsonProperty("genres")]
+        [DataMember(Name = "genres")]
         public IEnumerable<string> Genres { get; set; }
 
-        [JsonProperty("images")]
+        [DataMember(Name = "images")]
         public ImageShowJson Images { get; set; }
 
-        [JsonProperty("rating")]
+        [DataMember(Name = "rating")]
         public RatingJson Rating { get; set; }
 
-        [JsonProperty("similar")]
+        [DataMember(Name = "similar")]
         public List<string> Similar { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using PopcornApi.Models.Episode;
@@ -11,25 +12,25 @@ namespace PopcornApi.Models.Show
 {
     public class ShowLightJson
     {
-        [JsonProperty("imdb_id")]
+        [DataMember(Name = "imdb_id")]
         public string ImdbId { get; set; }
 
-        [JsonProperty("tvdb_id")]
+        [DataMember(Name = "tvdb_id")]
         public string TvdbId { get; set; }
 
-        [JsonProperty("title")]
+        [DataMember(Name = "title")]
         public string Title { get; set; }
 
-        [JsonProperty("year")]
+        [DataMember(Name = "year")]
         public int Year { get; set; }
 
-        [JsonProperty("genres")]
+        [DataMember(Name = "genres")]
         public string Genres { get; set; }
 
-        [JsonProperty("images")]
+        [DataMember(Name = "images")]
         public ImageShowJson Images { get; set; }
 
-        [JsonProperty("rating")]
+        [DataMember(Name = "rating")]
         public RatingJson Rating { get; set; }
     }
 }

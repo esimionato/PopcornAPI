@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using PopcornApi.Attributes;
 using PopcornApi.Database;
 using PopcornApi.Models.Episode;
@@ -189,28 +188,28 @@ namespace PopcornApi.Controllers
                 {
                     var show = new ShowLightJson
                     {
-                        Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty,
-                        Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0,
+                        Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty,
+                        Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
                         Rating = new RatingJson
                         {
-                            Percentage = reader[2].GetType() != typeof(DBNull) ? (int) reader[2] : 0,
-                            Loved = reader[3].GetType() != typeof(DBNull) ? (int) reader[3] : 0,
-                            Votes = reader[4].GetType() != typeof(DBNull) ? (int) reader[4] : 0,
-                            Hated = reader[5].GetType() != typeof(DBNull) ? (int) reader[5] : 0,
-                            Watching = reader[6].GetType() != typeof(DBNull) ? (int) reader[6] : 0
+                            Percentage = !await reader.IsDBNullAsync(2) ? reader.GetInt32(2) : 0,
+                            Loved = !await reader.IsDBNullAsync(3) ? reader.GetInt32(3) : 0,
+                            Votes = !await reader.IsDBNullAsync(4) ? reader.GetInt32(4) : 0,
+                            Hated = !await reader.IsDBNullAsync(5) ? reader.GetInt32(5) : 0,
+                            Watching = !await reader.IsDBNullAsync(6) ? reader.GetInt32(6) : 0
                         },
                         Images = new ImageShowJson
                         {
-                            Banner = reader[8].GetType() != typeof(DBNull) ? (string) reader[8] : string.Empty,
-                            Fanart = reader[9].GetType() != typeof(DBNull) ? (string) reader[9] : string.Empty,
-                            Poster = reader[10].GetType() != typeof(DBNull) ? (string) reader[10] : string.Empty,
+                            Banner = !await reader.IsDBNullAsync(8) ? reader.GetString(8) : string.Empty,
+                            Fanart = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
+                            Poster = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty,
                         },
-                        ImdbId = reader[11].GetType() != typeof(DBNull) ? (string) reader[11] : string.Empty,
-                        TvdbId = reader[12].GetType() != typeof(DBNull) ? (string) reader[12] : string.Empty,
-                        Genres = reader[13].GetType() != typeof(DBNull) ? (string) reader[13] : string.Empty
+                        ImdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty,
+                        TvdbId = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty,
+                        Genres = !await reader.IsDBNullAsync(13) ? reader.GetString(13) : string.Empty
                     };
                     shows.Add(show);
-                    count = reader[14].GetType() != typeof(DBNull) ? (int) reader[14] : 0;
+                    count = !await reader.IsDBNullAsync(14) ? reader.GetInt32(14) : 0;
                 }
 
                 var response = new ShowLightResponse
@@ -275,25 +274,25 @@ namespace PopcornApi.Controllers
                 var show = new ShowLightJson();
                 while (await reader.ReadAsync())
                 {
-                    show.Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty;
-                    show.Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0;
+                    show.Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty;
+                    show.Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0;
                     show.Rating = new RatingJson
                     {
-                        Percentage = reader[2].GetType() != typeof(DBNull) ? (int) reader[2] : 0,
-                        Loved = reader[3].GetType() != typeof(DBNull) ? (int) reader[3] : 0,
-                        Votes = reader[4].GetType() != typeof(DBNull) ? (int) reader[4] : 0,
-                        Hated = reader[5].GetType() != typeof(DBNull) ? (int) reader[5] : 0,
-                        Watching = reader[6].GetType() != typeof(DBNull) ? (int) reader[6] : 0
+                        Percentage = !await reader.IsDBNullAsync(2) ? reader.GetInt32(2) : 0,
+                        Loved = !await reader.IsDBNullAsync(3) ? reader.GetInt32(3) : 0,
+                        Votes = !await reader.IsDBNullAsync(4) ? reader.GetInt32(4) : 0,
+                        Hated = !await reader.IsDBNullAsync(5) ? reader.GetInt32(5) : 0,
+                        Watching = !await reader.IsDBNullAsync(6) ? reader.GetInt32(6) : 0
                     };
                     show.Images = new ImageShowJson
                     {
-                        Banner = reader[8].GetType() != typeof(DBNull) ? (string) reader[8] : string.Empty,
-                        Fanart = reader[9].GetType() != typeof(DBNull) ? (string) reader[9] : string.Empty,
-                        Poster = reader[10].GetType() != typeof(DBNull) ? (string) reader[10] : string.Empty
+                        Banner = !await reader.IsDBNullAsync(8) ? reader.GetString(8) : string.Empty,
+                        Fanart = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
+                        Poster = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty,
                     };
-                    show.ImdbId = reader[11].GetType() != typeof(DBNull) ? (string) reader[11] : string.Empty;
-                    show.TvdbId = reader[12].GetType() != typeof(DBNull) ? (string) reader[12] : string.Empty;
-                    show.Genres = reader[13].GetType() != typeof(DBNull) ? (string) reader[13] : string.Empty;
+                    show.ImdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty;
+                    show.TvdbId = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty;
+                    show.Genres = !await reader.IsDBNullAsync(13) ? reader.GetString(13) : string.Empty;
                 }
 
                 if (string.IsNullOrEmpty(show.ImdbId))

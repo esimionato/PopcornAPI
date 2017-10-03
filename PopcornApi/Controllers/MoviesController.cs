@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using PopcornApi.Attributes;
 using PopcornApi.Database;
 using PopcornApi.Models.Cast;
@@ -190,15 +189,15 @@ namespace PopcornApi.Controllers
                 {
                     var movie = new MovieLightJson
                     {
-                        Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty,
-                        Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0,
-                        Rating = reader[2].GetType() != typeof(DBNull) ? (double) reader[2] : 0d,
-                        PosterImage = reader[3].GetType() != typeof(DBNull) ? (string) reader[3] : string.Empty,
-                        ImdbCode = reader[4].GetType() != typeof(DBNull) ? (string) reader[4] : string.Empty,
-                        Genres = reader[5].GetType() != typeof(DBNull) ? (string) reader[5] : string.Empty
+                        Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty,
+                        Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
+                        Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d,
+                        PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty,
+                        ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
+                        Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty
                     };
                     movies.Add(movie);
-                    count = reader[8].GetType() != typeof(DBNull) ? (int) reader[8] : 0;
+                    count = !await reader.IsDBNullAsync(8) ? reader.GetInt32(8) : 0;
                 }
 
                 var response = new MovieLightResponse
@@ -216,7 +215,8 @@ namespace PopcornApi.Controllers
         // GET api/similar
         [HttpPost]
         [Route("similar")]
-        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds, [RequiredFromQuery] int page, [FromQuery] int limit)
+        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds,
+            [RequiredFromQuery] int page, [FromQuery] int limit)
         {
             if (!imdbIds.Any())
             {
@@ -286,7 +286,8 @@ namespace PopcornApi.Controllers
                 query += @" OFFSET @skip ROWS 
                     FETCH NEXT @take ROWS ONLY";
 
-                using (var cmd = new SqlCommand(query, new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
+                using (var cmd = new SqlCommand(query,
+                    new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
                 {
                     cmd.AddArrayParameters(imdbIds, "@imdbIds");
                     cmd.Parameters.Add(skipParameter);
@@ -299,15 +300,15 @@ namespace PopcornApi.Controllers
                     {
                         var movie = new MovieLightJson
                         {
-                            Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty,
-                            Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0,
-                            Rating = reader[2].GetType() != typeof(DBNull) ? (double) reader[2] : 0d,
-                            PosterImage = reader[3].GetType() != typeof(DBNull) ? (string) reader[3] : string.Empty,
-                            ImdbCode = reader[4].GetType() != typeof(DBNull) ? (string) reader[4] : string.Empty,
-                            Genres = reader[5].GetType() != typeof(DBNull) ? (string) reader[5] : string.Empty
+                            Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty,
+                            Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
+                            Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d,
+                            PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty,
+                            ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
+                            Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty
                         };
                         movies.Add(movie);
-                        count = reader[8].GetType() != typeof(DBNull) ? (int) reader[8] : 0;
+                        count = !await reader.IsDBNullAsync(8) ? reader.GetInt32(8) : 0;
                     }
 
                     var response = new MovieLightResponse
@@ -364,12 +365,12 @@ namespace PopcornApi.Controllers
                 var movie = new MovieLightJson();
                 while (await reader.ReadAsync())
                 {
-                    movie.Title = reader[0].GetType() != typeof(DBNull) ? (string) reader[0] : string.Empty;
-                    movie.Year = reader[1].GetType() != typeof(DBNull) ? (int) reader[1] : 0;
-                    movie.Rating = reader[2].GetType() != typeof(DBNull) ? (double) reader[2] : 0d;
-                    movie.PosterImage = reader[3].GetType() != typeof(DBNull) ? (string) reader[3] : string.Empty;
-                    movie.ImdbCode = reader[4].GetType() != typeof(DBNull) ? (string) reader[4] : string.Empty;
-                    movie.Genres = reader[5].GetType() != typeof(DBNull) ? (string) reader[5] : string.Empty;
+                    movie.Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty;
+                    movie.Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0;
+                    movie.Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d;
+                    movie.PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty;
+                    movie.ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty;
+                    movie.Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty;
                 }
 
                 if (string.IsNullOrEmpty(movie.ImdbCode))

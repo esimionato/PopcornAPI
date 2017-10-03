@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -8,19 +9,19 @@ namespace PopcornApi.Models.Rating
 {
     public class RatingJson
     {
-        [JsonProperty("percentage")]
+        [DataMember(Name = "percentage")]
         public int? Percentage { get; set; }
 
-        [JsonProperty("watching")]
+        [DataMember(Name = "watching")]
         public int? Watching { get; set; }
 
-        [JsonProperty("votes")]
+        [DataMember(Name = "votes")]
         public int? Votes { get; set; }
 
-        [JsonProperty("loved")]
+        [DataMember(Name = "loved")]
         public int? Loved { get; set; }
 
-        [JsonProperty("hated")]
+        [DataMember(Name = "hated")]
         public int? Hated { get; set; }
     }
 }
