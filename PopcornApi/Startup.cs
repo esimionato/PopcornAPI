@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using PopcornApi.Hubs;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
+using Utf8Json;
+using Utf8Json.Resolvers;
 
 namespace PopcornApi
 {
@@ -45,7 +47,6 @@ namespace PopcornApi
 
             services.AddSignalR();
             services.AddSingleton<ICachingService>(e => new CachingService(Configuration["Redis:ConnectionString"]));
-
             var loggingService = new LoggingService(Configuration["ApplicationInsights:InstrumentationKey"]);
             services.AddSingleton(typeof(ILoggingService), loggingService);
         }

@@ -17,6 +17,7 @@ using System.Data.SqlClient;
 using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
+using Utf8Json.Resolvers;
 using JsonSerializer = Utf8Json.JsonSerializer;
 
 namespace PopcornApi.Controllers
@@ -85,7 +86,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonSerializer.Deserialize<ShowLightResponse>(cachedShows));
+                        return Content(cachedShows, "application/json");
                     }
                     catch (Exception ex)
                     {
@@ -218,9 +219,9 @@ namespace PopcornApi.Controllers
                     Shows = shows
                 };
 
-                await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(response), TimeSpan.FromDays(1));
-                return
-                    Json(response);
+                var json = JsonSerializer.ToJsonString(response, StandardResolver.SnakeCase);
+                await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
+                return Content(json, "application/json");
             }
         }
 
@@ -237,7 +238,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonSerializer.Deserialize<ShowLightJson>(cachedShow));
+                        return Content(cachedShow, "application/json");
                     }
                     catch (Exception ex)
                     {
@@ -298,8 +299,9 @@ namespace PopcornApi.Controllers
                 if (string.IsNullOrEmpty(show.ImdbId))
                     return BadRequest();
 
-                await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(show));
-                return Json(show);
+                var json = JsonSerializer.ToJsonString(show, StandardResolver.SnakeCase);
+                await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
+                return Content(json, "application/json");
             }
         }
 
@@ -316,7 +318,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonSerializer.Deserialize<ShowJson>(cachedShow));
+                        return Content(cachedShow, "application/json");
                     }
                     catch (Exception ex)
                     {
@@ -350,8 +352,9 @@ namespace PopcornApi.Controllers
                 if (show == null) return BadRequest();
 
                 var showJson = ConvertShowToJson(show);
-                await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(showJson));
-                return Json(showJson);
+                var json = JsonSerializer.ToJsonString(showJson, StandardResolver.SnakeCase);
+                await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
+                return Content(json, "application/json");
             }
         }
 
