@@ -17,6 +17,7 @@ using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
 using PopcornApi.Helpers;
+using JsonSerializer = Utf8Json.JsonSerializer;
 
 namespace PopcornApi.Controllers
 {
@@ -85,7 +86,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonConvert.DeserializeObject<MovieLightResponse>(cachedMovies));
+                        return Json(JsonSerializer.Deserialize<MovieLightResponse>(cachedMovies));
                     }
                     catch (Exception ex)
                     {
@@ -206,7 +207,7 @@ namespace PopcornApi.Controllers
                     Movies = movies
                 };
 
-                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
+                await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(response), TimeSpan.FromDays(1));
                 return
                     Json(response);
             }
@@ -246,7 +247,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonConvert.DeserializeObject<MovieLightResponse>(cachedMovies));
+                        return Json(JsonSerializer.Deserialize<MovieLightResponse>(cachedMovies));
                     }
                     catch (Exception ex)
                     {
@@ -314,7 +315,7 @@ namespace PopcornApi.Controllers
                         TotalMovies = count,
                         Movies = movies
                     };
-                    await _cachingService.SetCache(hash, JsonConvert.SerializeObject(response), TimeSpan.FromDays(1));
+                    await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(response), TimeSpan.FromDays(1));
                     return
                         Json(response);
                 }
@@ -334,7 +335,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonConvert.DeserializeObject<MovieLightJson>(cachedMovie));
+                        return Json(JsonSerializer.Deserialize<MovieLightJson>(cachedMovie));
                     }
                     catch (Exception ex)
                     {
@@ -374,7 +375,7 @@ namespace PopcornApi.Controllers
                 if (string.IsNullOrEmpty(movie.ImdbCode))
                     return BadRequest();
 
-                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(movie));
+                await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(movie));
                 return Json(movie);
             }
         }
@@ -392,7 +393,7 @@ namespace PopcornApi.Controllers
                 {
                     try
                     {
-                        return Json(JsonConvert.DeserializeObject<MovieJson>(cachedMovie));
+                        return Json(JsonSerializer.Deserialize<MovieJson>(cachedMovie));
                     }
                     catch (Exception ex)
                     {
@@ -417,7 +418,7 @@ namespace PopcornApi.Controllers
                 if (movie == null) return BadRequest();
 
                 var movieJson = ConvertMovieToJson(movie);
-                await _cachingService.SetCache(hash, JsonConvert.SerializeObject(movieJson));
+                await _cachingService.SetCache(hash, JsonSerializer.ToJsonString(movieJson));
                 return Json(movieJson);
             }
         }
