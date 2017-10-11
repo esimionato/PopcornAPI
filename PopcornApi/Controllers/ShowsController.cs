@@ -120,7 +120,7 @@ namespace PopcornApi.Controllers
                     ON 
                         Rating.Id = Show.RatingId
                     WHERE
-                        1 = 1";
+                        Show.NumSeasons <> 0";
 
                 if (minimum_rating > 0 && minimum_rating < 10)
                 {
