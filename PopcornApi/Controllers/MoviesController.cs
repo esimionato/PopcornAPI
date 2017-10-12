@@ -104,11 +104,11 @@ namespace PopcornApi.Controllers
                 var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbMoviesPerPage);
                 var takeParameter = new SqlParameter("@take", nbMoviesPerPage);
                 var ratingParameter = new SqlParameter("@rating", minimum_rating);
-                var queryParameter = new SqlParameter("@Keywords", queryTerm);
+                var queryParameter = new SqlParameter("@Keywords", string.Format(@"""{0}""", queryTerm));
                 var genreParameter = new SqlParameter("@genre", genreFilter);
                 var query = @"
-                    SELECT 
-                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount
+                    SELECT DISTINCT
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount, Movie.DateUploadedUnix, Movie.Id
                     FROM 
                         MovieSet AS Movie
                     INNER JOIN
@@ -117,6 +117,9 @@ namespace PopcornApi.Controllers
                         Torrent.MovieId = Movie.Id
                     AND 
                         Torrent.Quality = '720p'
+                    INNER JOIN
+                        CastSet AS Cast
+                    ON Cast.MovieId = Movie.Id
                     WHERE
                         1 = 1";
 
@@ -129,14 +132,16 @@ namespace PopcornApi.Controllers
                 if (!string.IsNullOrWhiteSpace(query_term))
                 {
                     query += @" AND
-                        FREETEXT(Title, @Keywords)";
+                        (CONTAINS(Movie.Title, @Keywords) OR CONTAINS(Cast.Name, @Keywords) OR CONTAINS(Movie.ImdbCode, @Keywords) OR CONTAINS(Cast.ImdbCode, @Keywords))";
                 }
 
                 if (!string.IsNullOrWhiteSpace(genre))
                 {
                     query += @" AND
-                        CONTAINS(GenreNames, @genre)";
+                        CONTAINS(Movie.GenreNames, @genre)";
                 }
+
+                query += " GROUP BY Movie.Id, Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, Movie.DateUploadedUnix, Movie.Id";
 
                 if (!string.IsNullOrWhiteSpace(sort_by))
                 {
