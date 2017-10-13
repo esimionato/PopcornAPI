@@ -121,7 +121,7 @@ namespace PopcornApi.Controllers
                         CastSet AS Cast
                     ON Cast.MovieId = Movie.Id
                     WHERE
-                        1 = 1";
+                        Torrent.Url <> '' AND Torrent.Url IS NOT NULL";
 
                 if (minimum_rating > 0 && minimum_rating < 10)
                 {
@@ -288,6 +288,8 @@ namespace PopcornApi.Controllers
                         Torrent.Quality = '720p'
                     WHERE
                         Similar.TmdbId IN ({@imdbIds})
+                    AND
+                        Torrent.Url <> '' AND Torrent.Url IS NOT NULL
                     ORDER BY Movie.Rating DESC";
 
                 query += @" OFFSET @skip ROWS 
