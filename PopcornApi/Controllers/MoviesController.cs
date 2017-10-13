@@ -108,7 +108,7 @@ namespace PopcornApi.Controllers
                 var genreParameter = new SqlParameter("@genre", genreFilter);
                 var query = @"
                     SELECT DISTINCT
-                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount, Movie.DateUploadedUnix, Movie.Id
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount
                     FROM 
                         MovieSet AS Movie
                     INNER JOIN
@@ -141,7 +141,7 @@ namespace PopcornApi.Controllers
                         CONTAINS(Movie.GenreNames, @genre)";
                 }
 
-                query += " GROUP BY Movie.Id, Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, Movie.DateUploadedUnix, Movie.Id";
+                query += " GROUP BY Movie.Id, Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount";
 
                 if (!string.IsNullOrWhiteSpace(sort_by))
                 {
