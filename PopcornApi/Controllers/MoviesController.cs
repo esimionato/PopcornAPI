@@ -108,7 +108,7 @@ namespace PopcornApi.Controllers
                 var genreParameter = new SqlParameter("@genre", genreFilter);
                 var query = @"
                     SELECT DISTINCT
-                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.LargeCoverImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount
                     FROM 
                         MovieSet AS Movie
                     INNER JOIN
@@ -141,7 +141,7 @@ namespace PopcornApi.Controllers
                         CONTAINS(Movie.GenreNames, @genre)";
                 }
 
-                query += " GROUP BY Movie.Id, Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount";
+                query += " GROUP BY Movie.Id, Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.LargeCoverImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount";
 
                 if (!string.IsNullOrWhiteSpace(sort_by))
                 {
@@ -199,11 +199,12 @@ namespace PopcornApi.Controllers
                         Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
                         Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d,
                         PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty,
-                        ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
-                        Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty
+                        CoverImage = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
+                        ImdbCode = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty,
+                        Genres = !await reader.IsDBNullAsync(6) ? reader.GetString(6) : string.Empty
                     };
                     movies.Add(movie);
-                    count = !await reader.IsDBNullAsync(8) ? reader.GetInt32(8) : 0;
+                    count = !await reader.IsDBNullAsync(9) ? reader.GetInt32(9) : 0;
                 }
 
                 var response = new MovieLightResponse
@@ -272,7 +273,7 @@ namespace PopcornApi.Controllers
                 var takeParameter = new SqlParameter("@take", nbMoviesPerPage);
                 var query = @"
                     SELECT DISTINCT
-                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.LargeCoverImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount
                     FROM 
                         MovieSet AS Movie
                     INNER JOIN
@@ -310,11 +311,12 @@ namespace PopcornApi.Controllers
                             Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
                             Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d,
                             PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty,
-                            ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
-                            Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty
+                            CoverImage = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
+                            ImdbCode = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty,
+                            Genres = !await reader.IsDBNullAsync(6) ? reader.GetString(6) : string.Empty
                         };
                         movies.Add(movie);
-                        count = !await reader.IsDBNullAsync(8) ? reader.GetInt32(8) : 0;
+                        count = !await reader.IsDBNullAsync(9) ? reader.GetInt32(9) : 0;
                     }
 
                     var response = new MovieLightResponse
@@ -361,7 +363,7 @@ namespace PopcornApi.Controllers
                 var imdbParameter = new SqlParameter("@imdbCode", imdb);
                 var query = @"
                     SELECT 
-                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.LargeCoverImage, Movie.ImdbCode, Movie.GenreNames
                     FROM 
                         MovieSet AS Movie
                     WHERE
@@ -376,14 +378,86 @@ namespace PopcornApi.Controllers
                     movie.Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0;
                     movie.Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d;
                     movie.PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty;
-                    movie.ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty;
-                    movie.Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty;
+                    movie.CoverImage = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty;
+                    movie.ImdbCode = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty;
+                    movie.Genres = !await reader.IsDBNullAsync(6) ? reader.GetString(6) : string.Empty;
                 }
 
                 if (string.IsNullOrEmpty(movie.ImdbCode))
                     return BadRequest();
 
                 var json = JsonSerializer.ToJsonString(movie, StandardResolver.SnakeCase);
+                await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
+                return Content(json, "application/json");
+            }
+        }
+
+        // GET api/movies/cast/nm0000123
+        [HttpGet("cast/{castId}")]
+        public async Task<IActionResult> GetFromCast(string castId)
+        {
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"cast:{castId}"));
+            try
+            {
+                var cachedMovie = await _cachingService.GetCache(hash);
+                if (cachedMovie != null)
+                {
+                    try
+                    {
+                        return Content(cachedMovie, "application/json");
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var imdbParameter = new SqlParameter("@imdbCode", castId);
+                var query = @"
+                    SELECT 
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.LargeCoverImage, Movie.ImdbCode, Movie.GenreNames
+                    FROM 
+                        MovieSet AS Movie
+                    INNER JOIN
+                        CastSet AS Cast
+                    ON 
+                        Cast.MovieId = Movie.Id
+                    WHERE
+                        Cast.ImdbCode = @imdbCode";
+                var movieQuery =
+                    await context.Database.ExecuteSqlQueryAsync(query, new CancellationToken(), imdbParameter);
+                var reader = movieQuery.DbDataReader;
+                var movies = new List<MovieLightJson>();
+                while (await reader.ReadAsync())
+                {
+                    var movie = new MovieLightJson
+                    {
+                        Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty,
+                        Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
+                        Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d,
+                        PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty,
+                        CoverImage = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
+                        ImdbCode = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty,
+                        Genres = !await reader.IsDBNullAsync(6) ? reader.GetString(6) : string.Empty
+                    };
+                    movies.Add(movie);
+                }
+
+                var response = new MovieLightResponse
+                {
+                    TotalMovies = movies.Count,
+                    Movies = movies
+                };
+
+                var json = JsonSerializer.ToJsonString(response, StandardResolver.SnakeCase);
                 await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
                 return Content(json, "application/json");
             }
