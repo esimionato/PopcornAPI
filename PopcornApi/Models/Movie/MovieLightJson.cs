@@ -28,8 +28,5 @@ namespace PopcornApi.Models.Movie
 
         [DataMember(Name = "poster_image")]
         public string PosterImage { get; set; }
-
-        [DataMember(Name = "cover_image")]
-        public string CoverImage { get; set; }
     }
 }
