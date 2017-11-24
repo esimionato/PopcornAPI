@@ -6,11 +6,8 @@ using Microsoft.AspNetCore.Mvc.Cors.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PopcornApi.Hubs;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
-using Utf8Json;
-using Utf8Json.Resolvers;
 
 namespace PopcornApi
 {
@@ -45,7 +42,6 @@ namespace PopcornApi
                 options.Filters.Add(new CorsAuthorizationFilterFactory("CorsPolicy"));
             });
 
-            services.AddSignalR();
             services.AddSingleton<ICachingService>(e => new CachingService(Configuration["Redis:ConnectionString"]));
             var loggingService = new LoggingService(Configuration["ApplicationInsights:InstrumentationKey"]);
             services.AddSingleton(typeof(ILoggingService), loggingService);
@@ -58,11 +54,6 @@ namespace PopcornApi
             loggerFactory.AddDebug();
 
             app.UseMvc();
-            app.UseSignalR(routes =>
-            {
-                routes.MapHub<PopcornHub>("popcorn");
-            });
-
             app.Run(async context =>
             {
                 await context.Response.WriteAsync("Popcorn API");
