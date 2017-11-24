@@ -108,7 +108,7 @@ namespace PopcornApi.Controllers
                 var genreParameter = new SqlParameter("@genre", genreFilter);
                 var query = @"
                     SELECT 
-                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Fanart, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames, COUNT(*) OVER () as TotalCount
+                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames, COUNT(*) OVER () as TotalCount
                     FROM 
                         ShowSet AS Show
                     INNER JOIN 
@@ -131,7 +131,7 @@ namespace PopcornApi.Controllers
                 if (!string.IsNullOrWhiteSpace(query_term))
                 {
                     query += @" AND
-                        FREETEXT(Title, @Keywords)";
+                        (CONTAINS(Title, @Keywords) OR CONTAINS(ImdbId, @Keywords) OR CONTAINS(TvdbId, @Keywords))";
                 }
 
                 if (!string.IsNullOrWhiteSpace(genre))
@@ -202,15 +202,14 @@ namespace PopcornApi.Controllers
                         Images = new ImageShowJson
                         {
                             Banner = !await reader.IsDBNullAsync(8) ? reader.GetString(8) : string.Empty,
-                            Fanart = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
-                            Poster = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty,
+                            Poster = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
                         },
-                        ImdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty,
-                        TvdbId = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty,
-                        Genres = !await reader.IsDBNullAsync(13) ? reader.GetString(13) : string.Empty
+                        ImdbId = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty,
+                        TvdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty,
+                        Genres = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty
                     };
                     shows.Add(show);
-                    count = !await reader.IsDBNullAsync(14) ? reader.GetInt32(14) : 0;
+                    count = !await reader.IsDBNullAsync(13) ? reader.GetInt32(13) : 0;
                 }
 
                 var response = new ShowLightResponse
@@ -256,7 +255,7 @@ namespace PopcornApi.Controllers
                 var imdbParameter = new SqlParameter("@imdbId", imdb);
                 var query = @"
                     SELECT 
-                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Fanart, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames
+                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames
                     FROM 
                         ShowSet AS Show
                     INNER JOIN 
@@ -288,12 +287,11 @@ namespace PopcornApi.Controllers
                     show.Images = new ImageShowJson
                     {
                         Banner = !await reader.IsDBNullAsync(8) ? reader.GetString(8) : string.Empty,
-                        Fanart = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
-                        Poster = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty,
+                        Poster = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
                     };
-                    show.ImdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty;
-                    show.TvdbId = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty;
-                    show.Genres = !await reader.IsDBNullAsync(13) ? reader.GetString(13) : string.Empty;
+                    show.ImdbId = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty;
+                    show.TvdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty;
+                    show.Genres = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty;
                 }
 
                 if (string.IsNullOrEmpty(show.ImdbId))
@@ -427,7 +425,6 @@ namespace PopcornApi.Controllers
                 Images = new ImageShowJson
                 {
                     Banner = show.Images?.Banner,
-                    Fanart = show.Images?.Fanart,
                     Poster = show.Images?.Poster
                 },
                 LastUpdated = show.LastUpdated,

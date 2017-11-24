@@ -12,9 +12,6 @@ namespace PopcornApi.Models.Image
         [DataMember(Name = "poster")]
         public string Poster { get; set; }
 
-        [DataMember(Name = "fanart")]
-        public string Fanart { get; set; }
-
         [DataMember(Name = "banner")]
         public string Banner { get; set; }
     }
