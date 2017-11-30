@@ -218,11 +218,10 @@ namespace PopcornApi.Controllers
             }
         }
 
-        // GET api/similar
+        // GET api/movies/ids
         [HttpPost]
-        [Route("similar")]
-        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds,
-            [RequiredFromQuery] int page, [FromQuery] int limit)
+        [Route("ids")]
+        public async Task<IActionResult> GetMoviesByIds([FromBody] IEnumerable<string> imdbIds)
         {
             if (!imdbIds.Any())
             {
@@ -233,19 +232,9 @@ namespace PopcornApi.Controllers
                 });
             }
 
-            var nbMoviesPerPage = 20;
-            if (limit >= 20 && limit <= 50)
-                nbMoviesPerPage = limit;
-
-            var currentPage = 1;
-            if (page >= 1)
-            {
-                currentPage = page;
-            }
-
             var hash = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(
-                    $@"type=movies&page={page}&limit={limit}&imdbId={string.Join(',', imdbIds)}"));
+                    $@"type=movies&imdbIds={string.Join(',', imdbIds)}"));
             try
             {
                 var cachedMovies = await _cachingService.GetCache(hash);
@@ -268,38 +257,19 @@ namespace PopcornApi.Controllers
 
             using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
             {
-                var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbMoviesPerPage);
-                var takeParameter = new SqlParameter("@take", nbMoviesPerPage);
                 var query = @"
                     SELECT DISTINCT
-                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, COUNT(*) OVER () as TotalCount
                     FROM 
                         MovieSet AS Movie
-                    INNER JOIN
-                        TorrentMovieSet AS Torrent
-                    ON 
-                        Torrent.MovieId = Movie.Id
-                    INNER JOIN
-                        Similar
-                    ON 
-                        Similar.MovieId = Movie.Id
-                    AND 
-                        Torrent.Quality = '720p'
                     WHERE
-                        Similar.TmdbId IN ({@imdbIds})
-                    AND
-                        Torrent.Url <> '' AND Torrent.Url IS NOT NULL
+                        Movie.ImdbCode IN ({@imdbIds})
                     ORDER BY Movie.Rating DESC";
-
-                query += @" OFFSET @skip ROWS 
-                    FETCH NEXT @take ROWS ONLY";
 
                 using (var cmd = new SqlCommand(query,
                     new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
                 {
                     cmd.AddArrayParameters(imdbIds, "@imdbIds");
-                    cmd.Parameters.Add(skipParameter);
-                    cmd.Parameters.Add(takeParameter);
                     await cmd.Connection.OpenAsync();
                     var reader = await cmd.ExecuteReaderAsync(new CancellationToken());
                     var count = 0;
@@ -316,7 +286,7 @@ namespace PopcornApi.Controllers
                             Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty
                         };
                         movies.Add(movie);
-                        count = !await reader.IsDBNullAsync(8) ? reader.GetInt32(8) : 0;
+                        count = !await reader.IsDBNullAsync(6) ? reader.GetInt32(6) : 0;
                     }
 
                     var response = new MovieLightResponse

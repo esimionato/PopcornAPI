@@ -104,7 +104,7 @@ namespace PopcornApi.Controllers
                 var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbShowsPerPage);
                 var takeParameter = new SqlParameter("@take", nbShowsPerPage);
                 var ratingParameter = new SqlParameter("@rating", minimum_rating);
-                var queryParameter = new SqlParameter("@Keywords", queryTerm);
+                var queryParameter = new SqlParameter("@Keywords", string.Format(@"""{0}""", queryTerm));
                 var genreParameter = new SqlParameter("@genre", genreFilter);
                 var query = @"
                     SELECT 
