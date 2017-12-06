@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PopcornApi.Services.Caching;
 using PopcornApi.Services.Logging;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace PopcornApi
 {
@@ -42,6 +43,11 @@ namespace PopcornApi
                 options.Filters.Add(new CorsAuthorizationFilterFactory("CorsPolicy"));
             });
 
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Info { Title = "Swagger", Version = "v1" });
+            });
+
             services.AddSingleton<ICachingService>(e => new CachingService(Configuration["Redis:ConnectionString"]));
             var loggingService = new LoggingService(Configuration["ApplicationInsights:InstrumentationKey"]);
             services.AddSingleton(typeof(ILoggingService), loggingService);
@@ -52,6 +58,12 @@ namespace PopcornApi
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+            app.UseSwagger();
+
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Swagger v1");
+            });
 
             app.UseMvc();
             app.Run(async context =>
