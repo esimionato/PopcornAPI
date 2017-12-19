@@ -111,17 +111,16 @@ namespace PopcornApi.Controllers
                         Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, Torrent.Peers, Torrent.Seeds, COUNT(*) OVER () as TotalCount, Movie.DateUploadedUnix, Movie.Id, Movie.DownloadCount, Movie.LikeCount
                     FROM 
                         MovieSet AS Movie
-                    INNER JOIN
-                        TorrentMovieSet AS Torrent
-                    ON 
-                        Torrent.MovieId = Movie.Id
-                    AND 
-                        Torrent.Quality = '720p'
+                    CROSS APPLY
+					(
+						SELECT TOP 1 Torrent.MovieId, Torrent.Peers, Torrent.Seeds FROM TorrentMovieSet AS Torrent
+						WHERE Torrent.MovieId = Movie.Id  AND Torrent.Url <> '' AND Torrent.Url IS NOT NULL
+					) Torrent
+
                     INNER JOIN
                         CastSet AS Cast
                     ON Cast.MovieId = Movie.Id
-                    WHERE
-                        Torrent.Url <> '' AND Torrent.Url IS NOT NULL";
+                    WHERE 1 = 1";
 
                 if (minimum_rating > 0 && minimum_rating < 10)
                 {
