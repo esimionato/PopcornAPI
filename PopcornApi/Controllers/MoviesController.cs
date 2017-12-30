@@ -301,6 +301,102 @@ namespace PopcornApi.Controllers
             }
         }
 
+        // GET api/movies/similar
+        [HttpPost]
+        [Route("similar")]
+        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds)
+        {
+            if (!imdbIds.Any())
+            {
+                return Json(new MovieLightResponse
+                {
+                    Movies = new List<MovieLightJson>(),
+                    TotalMovies = 0
+                });
+            }
+
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(
+                    $@"type=movies&similar&imdbIds={string.Join(',', imdbIds)}"));
+            try
+            {
+                var cachedMovies = await _cachingService.GetCache(hash);
+                if (cachedMovies != null)
+                {
+                    try
+                    {
+                        return Content(cachedMovies, "application/json");
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var query = @"
+                    SELECT DISTINCT
+                        Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, COUNT(*) OVER () as TotalCount
+                    FROM 
+                        MovieSet AS Movie
+                    WHERE
+                        Movie.ImdbCode IN (SELECT 
+                            Similar.TmdbId                      
+                        FROM 
+                            Similar AS Similar
+                        INNER JOIN
+					    (
+						    SELECT Movie.ID
+						    FROM 
+							    MovieSet AS Movie
+						    WHERE 
+							    Movie.ImdbCode IN ({@imdbIds})
+						) Movie
+					ON Similar.MovieId = Movie.Id)
+                    ORDER BY Movie.Rating DESC";
+
+                using (var cmd = new SqlCommand(query,
+                    new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
+                {
+                    cmd.AddArrayParameters(imdbIds, "@imdbIds");
+                    await cmd.Connection.OpenAsync();
+                    var reader = await cmd.ExecuteReaderAsync(new CancellationToken());
+                    var count = 0;
+                    var movies = new List<MovieLightJson>();
+                    while (await reader.ReadAsync())
+                    {
+                        var movie = new MovieLightJson
+                        {
+                            Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty,
+                            Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
+                            Rating = !await reader.IsDBNullAsync(2) ? reader.GetDouble(2) : 0d,
+                            PosterImage = !await reader.IsDBNullAsync(3) ? reader.GetString(3) : string.Empty,
+                            ImdbCode = !await reader.IsDBNullAsync(4) ? reader.GetString(4) : string.Empty,
+                            Genres = !await reader.IsDBNullAsync(5) ? reader.GetString(5) : string.Empty
+                        };
+                        movies.Add(movie);
+                        count = !await reader.IsDBNullAsync(6) ? reader.GetInt32(6) : 0;
+                    }
+
+                    var response = new MovieLightResponse
+                    {
+                        TotalMovies = count,
+                        Movies = movies
+                    };
+
+                    var json = JsonSerializer.ToJsonString(response, StandardResolver.SnakeCase);
+                    await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
+                    return Content(json, "application/json");
+                }
+            }
+        }
+
         // GET api/movies/light/tt3640424
         [HttpGet("light/{imdb}")]
         public async Task<IActionResult> GetLight(string imdb)
