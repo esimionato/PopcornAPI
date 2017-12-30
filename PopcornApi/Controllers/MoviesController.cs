@@ -304,8 +304,32 @@ namespace PopcornApi.Controllers
         // GET api/movies/similar
         [HttpPost]
         [Route("similar")]
-        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds)
+        public async Task<IActionResult> GetSimilar([FromBody] IEnumerable<string> imdbIds, [RequiredFromQuery] int page, [FromQuery] int limit,
+            [FromQuery] int minimum_rating, [FromQuery] string query_term,
+            [FromQuery] string genre, [FromQuery] string sort_by)
         {
+            var nbMoviesPerPage = 20;
+            if (limit >= 20 && limit <= 50)
+                nbMoviesPerPage = limit;
+
+            var currentPage = 1;
+            if (page >= 1)
+            {
+                currentPage = page;
+            }
+
+            var queryTerm = string.Empty;
+            if (!string.IsNullOrWhiteSpace(query_term))
+            {
+                queryTerm = query_term;
+            }
+
+            var genreFilter = string.Empty;
+            if (!string.IsNullOrWhiteSpace(genre))
+            {
+                genreFilter = genre;
+            }
+
             if (!imdbIds.Any())
             {
                 return Json(new MovieLightResponse
@@ -317,7 +341,10 @@ namespace PopcornApi.Controllers
 
             var hash = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(
-                    $@"type=movies&similar&imdbIds={string.Join(',', imdbIds)}"));
+                    $@"type=movies&similar&imdbIds={string.Join(',', imdbIds)}&page={page}&limit={limit}&minimum_rating={minimum_rating}&query_term={
+                            query_term
+                        }&genre={genre}&sort_by={sort_by}"));
+
             try
             {
                 var cachedMovies = await _cachingService.GetCache(hash);
@@ -340,6 +367,11 @@ namespace PopcornApi.Controllers
 
             using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
             {
+                var skipParameter = new SqlParameter("@skip", (currentPage - 1) * nbMoviesPerPage);
+                var takeParameter = new SqlParameter("@take", nbMoviesPerPage);
+                var ratingParameter = new SqlParameter("@rating", minimum_rating);
+                var queryParameter = new SqlParameter("@Keywords", string.Format(@"""{0}""", queryTerm));
+                var genreParameter = new SqlParameter("@genre", genreFilter);
                 var query = @"
                     SELECT DISTINCT
                         Movie.Title, Movie.Year, Movie.Rating, Movie.PosterImage, Movie.ImdbCode, Movie.GenreNames, COUNT(*) OVER () as TotalCount
@@ -359,12 +391,39 @@ namespace PopcornApi.Controllers
 							    Movie.ImdbCode IN ({@imdbIds})
 						) Movie
 					ON Similar.MovieId = Movie.Id)
-                    ORDER BY Movie.Rating DESC";
+                    AND 1 = 1";
+
+                if (minimum_rating > 0 && minimum_rating < 10)
+                {
+                    query += @" AND
+                        Rating >= @rating";
+                }
+
+                if (!string.IsNullOrWhiteSpace(query_term))
+                {
+                    query += @" AND
+                        (CONTAINS(Movie.Title, @Keywords) OR CONTAINS(Movie.ImdbCode, @Keywords))";
+                }
+
+                if (!string.IsNullOrWhiteSpace(genre))
+                {
+                    query += @" AND
+                        CONTAINS(Movie.GenreNames, @genre)";
+                }
+
+                query += " ORDER BY Movie.Rating DESC";
+                query += @" OFFSET @skip ROWS 
+                    FETCH NEXT @take ROWS ONLY";
 
                 using (var cmd = new SqlCommand(query,
                     new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
                 {
                     cmd.AddArrayParameters(imdbIds, "@imdbIds");
+                    cmd.Parameters.Add(skipParameter);
+                    cmd.Parameters.Add(takeParameter);
+                    cmd.Parameters.Add(ratingParameter);
+                    cmd.Parameters.Add(queryParameter);
+                    cmd.Parameters.Add(genreParameter);
                     await cmd.Connection.OpenAsync();
                     var reader = await cmd.ExecuteReaderAsync(new CancellationToken());
                     var count = 0;
