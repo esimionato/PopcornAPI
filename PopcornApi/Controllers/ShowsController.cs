@@ -17,6 +17,7 @@ using System.Data.SqlClient;
 using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
+using PopcornApi.Helpers;
 using Utf8Json.Resolvers;
 using JsonSerializer = Utf8Json.JsonSerializer;
 
@@ -300,6 +301,110 @@ namespace PopcornApi.Controllers
                 var json = JsonSerializer.ToJsonString(show, StandardResolver.SnakeCase);
                 await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
                 return Content(json, "application/json");
+            }
+        }
+
+        // POST api/shows/ids
+        [HttpPost]
+        [Route("ids")]
+        public async Task<IActionResult> GetShowByIds([FromBody] IEnumerable<string> imdbIds)
+        {
+            if (!imdbIds.Any())
+            {
+                return Json(new ShowLightResponse
+                {
+                    Shows = new List<ShowLightJson>(),
+                    TotalShows = 0
+                });
+            }
+
+            var hash = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(
+                    $@"type=shows&imdbIds={string.Join(',', imdbIds)}"));
+            try
+            {
+                var cachedShow = await _cachingService.GetCache(hash);
+                if (cachedShow != null)
+                {
+                    try
+                    {
+                        return Content(cachedShow, "application/json");
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.Telemetry.TrackException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Telemetry.TrackException(ex);
+            }
+
+            using (var context = new PopcornContextFactory().CreateDbContext(new string[0]))
+            {
+                var query = @"
+                    SELECT DISTINCT
+                        Show.Title, Show.Year, Rating.Percentage, Rating.Loved, Rating.Votes, Rating.Hated, Rating.Watching, Show.LastUpdated, Image.Banner, Image.Poster, Show.ImdbId, Show.TvdbId, Show.GenreNames, COUNT(*) OVER () as TotalCount
+                    FROM 
+                        ShowSet AS Show
+                    INNER JOIN 
+                        ImageShowSet AS Image
+                    ON 
+                        Image.Id = Show.ImagesId
+                    INNER JOIN 
+                        RatingSet AS Rating
+                    ON 
+                        Rating.Id = Show.RatingId
+                    WHERE
+                        Show.ImdbId IN ({@imdbIds})";
+
+                using (var cmd = new SqlCommand(query,
+                    new SqlConnection(context.Database.GetDbConnection().ConnectionString)))
+                {
+                    cmd.AddArrayParameters(imdbIds, "@imdbIds");
+                    await cmd.Connection.OpenAsync();
+                    var reader = await cmd.ExecuteReaderAsync(new CancellationToken());
+                    var count = 0;
+                    var shows = new List<ShowLightJson>();
+                    while (await reader.ReadAsync())
+                    {
+                        var show = new ShowLightJson
+                        {
+                            Title = !await reader.IsDBNullAsync(0) ? reader.GetString(0) : string.Empty,
+                            Year = !await reader.IsDBNullAsync(1) ? reader.GetInt32(1) : 0,
+                            Rating = new RatingJson
+                            {
+                                Percentage = !await reader.IsDBNullAsync(2) ? reader.GetInt32(2) : 0,
+                                Loved = !await reader.IsDBNullAsync(3) ? reader.GetInt32(3) : 0,
+                                Votes = !await reader.IsDBNullAsync(4) ? reader.GetInt32(4) : 0,
+                                Hated = !await reader.IsDBNullAsync(5) ? reader.GetInt32(5) : 0,
+                                Watching = !await reader.IsDBNullAsync(6) ? reader.GetInt32(6) : 0
+                            },
+                            Images = new ImageShowJson
+                            {
+                                Banner = !await reader.IsDBNullAsync(8) ? reader.GetString(8) : string.Empty,
+                                Poster = !await reader.IsDBNullAsync(9) ? reader.GetString(9) : string.Empty,
+                            },
+                            ImdbId = !await reader.IsDBNullAsync(10) ? reader.GetString(10) : string.Empty,
+                            TvdbId = !await reader.IsDBNullAsync(11) ? reader.GetString(11) : string.Empty,
+                            Genres = !await reader.IsDBNullAsync(12) ? reader.GetString(12) : string.Empty
+                        };
+
+                        shows.Add(show);
+                        count = !await reader.IsDBNullAsync(13) ? reader.GetInt32(13) : 0;
+                    }
+
+                    var response = new ShowLightResponse
+                    {
+                        TotalShows = count,
+                        Shows = shows
+                    };
+
+                    var json = JsonSerializer.ToJsonString(response, StandardResolver.SnakeCase);
+                    await _cachingService.SetCache(hash, json, TimeSpan.FromDays(1));
+                    return Content(json, "application /json");
+                }
             }
         }
 
