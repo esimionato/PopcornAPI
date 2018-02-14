@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using PopcornApi.Models.Episode;
 using PopcornApi.Models.Image;
 using PopcornApi.Models.Rating;
+using PopcornApi.Models.Subtitle;
 
 namespace PopcornApi.Models.Show
 {
@@ -65,5 +66,8 @@ namespace PopcornApi.Models.Show
 
         [DataMember(Name = "similar")]
         public List<string> Similar { get; set; }
+
+        [DataMember(Name = "subtitles")]
+        public List<SubtitleJson> Subtitles { get; set; }
     }
 }

@@ -12,6 +12,7 @@ namespace PopcornApi.Database
             this.Cast = new HashSet<Cast>();
             this.Torrents = new HashSet<TorrentMovie>();
             this.Similars = new HashSet<Similar>();
+            this.Subtitles = new HashSet<Subtitle>();
         }
 
         public int Id { get; set; }
@@ -44,5 +45,7 @@ namespace PopcornApi.Database
         public virtual ICollection<Cast> Cast { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<TorrentMovie> Torrents { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Subtitle> Subtitles { get; set; }
     }
 }

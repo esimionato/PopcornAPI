@@ -5,6 +5,7 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using PopcornApi.Models.Cast;
+using PopcornApi.Models.Subtitle;
 using PopcornApi.Models.Torrent.Movie;
 
 namespace PopcornApi.Models.Movie
@@ -79,5 +80,8 @@ namespace PopcornApi.Models.Movie
 
         [DataMember(Name = "similar")]
         public List<string> Similar { get; set; }
+
+        [DataMember(Name = "subtitles")]
+        public List<SubtitleJson> Subtitles { get; set; }
     }
 }

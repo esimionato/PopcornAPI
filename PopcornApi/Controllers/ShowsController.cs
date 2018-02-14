@@ -18,6 +18,7 @@ using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
 using PopcornApi.Helpers;
+using PopcornApi.Models.Subtitle;
 using Utf8Json.Resolvers;
 using JsonSerializer = Utf8Json.JsonSerializer;
 
@@ -450,6 +451,7 @@ namespace PopcornApi.Controllers
                     .ThenInclude(torrent => torrent.Torrent720p)
                     .Include(a => a.Genres)
                     .Include(a => a.Images)
+                    .Include(a => a.Subtitles)
                     .Include(a => a.Similars).AsQueryable()
                     .FirstOrDefaultAsync(a => a.ImdbId == imdb);
                 if (show == null) return BadRequest();
@@ -539,7 +541,19 @@ namespace PopcornApi.Controllers
                 Slug = show.Slug,
                 Status = show.Status,
                 Synopsis = show.Synopsis,
-                Similar = show.Similars.Select(a => a.TmdbId).ToList()
+                Similar = show.Similars.Select(a => a.TmdbId).ToList(),
+                Subtitles = show.Subtitles.Select(subtitle => new SubtitleJson
+                {
+                    Bad = subtitle.Bad,
+                    ImdbId = subtitle.ImdbId,
+                    Iso639 = subtitle.Iso639,
+                    LanguageId = subtitle.LanguageId,
+                    LanguageName = subtitle.LanguageName,
+                    OsdbSubtitleId = subtitle.OsdbSubtitleId,
+                    Rating = subtitle.Rating,
+                    SubtitleDownloadLink = subtitle.SubtitleDownloadLink,
+                    SubtitleFileName = subtitle.SubtitleFileName
+                }).ToList()
             };
         }
     }

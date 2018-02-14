@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
 using PopcornApi.Helpers;
+using PopcornApi.Models.Subtitle;
 using Utf8Json.Resolvers;
 using JsonSerializer = Utf8Json.JsonSerializer;
 
@@ -617,6 +618,7 @@ namespace PopcornApi.Controllers
                     await context.MovieSet.Include(a => a.Torrents)
                         .Include(a => a.Cast)
                         .Include(a => a.Similars)
+                        .Include(a => a.Subtitles)
                         .Include(a => a.Genres).AsQueryable()
                         .FirstOrDefaultAsync(
                             document => document.ImdbCode == imdb);
@@ -677,7 +679,19 @@ namespace PopcornApi.Controllers
                 PosterImage = movie.PosterImage,
                 TitleLong = movie.TitleLong,
                 YtTrailerCode = movie.YtTrailerCode,
-                Similar = movie.Similars.Select(a => a.TmdbId).ToList()
+                Similar = movie.Similars.Select(a => a.TmdbId).ToList(),
+                Subtitles = movie.Subtitles.Select(subtitle => new SubtitleJson
+                {
+                    Bad = subtitle.Bad,
+                    ImdbId = subtitle.ImdbId,
+                    Iso639 = subtitle.Iso639,
+                    LanguageId = subtitle.LanguageId,
+                    LanguageName = subtitle.LanguageName,
+                    OsdbSubtitleId = subtitle.OsdbSubtitleId,
+                    Rating = subtitle.Rating,
+                    SubtitleDownloadLink = subtitle.SubtitleDownloadLink,
+                    SubtitleFileName = subtitle.SubtitleFileName
+                }).ToList()
             };
         }
     }
