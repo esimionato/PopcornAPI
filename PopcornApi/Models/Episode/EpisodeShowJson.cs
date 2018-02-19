@@ -1,5 +1,7 @@
-﻿using System.Runtime.Serialization;
+﻿using System.Collections.Generic;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
+using PopcornApi.Models.Subtitle;
 using PopcornApi.Models.Torrent.Show;
 
 namespace PopcornApi.Models.Episode
@@ -29,5 +31,8 @@ namespace PopcornApi.Models.Episode
 
         [DataMember(Name = "tvdb_id")]
         public int? TvdbId { get; set; }
+
+        [DataMember(Name = "subtitles")]
+        public List<SubtitleJson> Subtitles { get; set; }
     }
 }

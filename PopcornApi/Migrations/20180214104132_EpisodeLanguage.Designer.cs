@@ -11,9 +11,10 @@ using System;
 namespace PopcornApi.Migrations
 {
     [DbContext(typeof(PopcornContext))]
-    partial class PopcornContextModelSnapshot : ModelSnapshot
+    [Migration("20180214104132_EpisodeLanguage")]
+    partial class EpisodeLanguage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,8 +117,6 @@ namespace PopcornApi.Migrations
                     b.Property<string>("Iso639");
 
                     b.Property<string>("LanguageName");
-
-                    b.Property<bool>("OpusArchiveDownloaded");
 
                     b.Property<string>("SubLanguageId");
 

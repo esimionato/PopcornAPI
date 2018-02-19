@@ -66,8 +66,5 @@ namespace PopcornApi.Models.Show
 
         [DataMember(Name = "similar")]
         public List<string> Similar { get; set; }
-
-        [DataMember(Name = "subtitles")]
-        public List<SubtitleJson> Subtitles { get; set; }
     }
 }

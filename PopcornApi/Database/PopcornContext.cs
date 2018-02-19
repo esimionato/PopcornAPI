@@ -23,5 +23,6 @@ namespace PopcornApi.Database
         public virtual DbSet<Torrent> TorrentSet { get; set; }
         public virtual DbSet<ImageShow> ImageShowSet { get; set; }
         public virtual DbSet<Rating> RatingSet { get; set; }
+        public virtual DbSet<Language> LanguageSet { get; set; }
     }
 }

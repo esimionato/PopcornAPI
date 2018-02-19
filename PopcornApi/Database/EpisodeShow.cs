@@ -5,6 +5,12 @@ namespace PopcornApi.Database
     
     public partial class EpisodeShow
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+        public EpisodeShow()
+        {
+            this.Subtitles = new List<Subtitle>();
+        }
+
         public int Id { get; set; }
         public long FirstAired { get; set; }
         public bool DateBased { get; set; }
@@ -15,5 +21,7 @@ namespace PopcornApi.Database
         public Nullable<int> TvdbId { get; set; }
     
         public virtual TorrentNode Torrents { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Subtitle> Subtitles { get; set; }
     }
 }

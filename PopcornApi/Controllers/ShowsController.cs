@@ -447,11 +447,12 @@ namespace PopcornApi.Controllers
                     .ThenInclude(episode => episode.Torrents)
                     .ThenInclude(torrent => torrent.Torrent480p)
                     .Include(a => a.Episodes)
+                    .ThenInclude(a => a.Subtitles)
+                    .Include(a => a.Episodes)
                     .ThenInclude(episode => episode.Torrents)
                     .ThenInclude(torrent => torrent.Torrent720p)
                     .Include(a => a.Genres)
                     .Include(a => a.Images)
-                    .Include(a => a.Subtitles)
                     .Include(a => a.Similars).AsQueryable()
                     .FirstOrDefaultAsync(a => a.ImdbId == imdb);
                 if (show == null) return BadRequest();
@@ -524,7 +525,19 @@ namespace PopcornApi.Controllers
                     Title = episode.Title,
                     Overview = episode.Overview,
                     Season = episode.Season,
-                    TvdbId = episode.TvdbId
+                    TvdbId = episode.TvdbId,
+                    Subtitles = episode.Subtitles.Select(subtitle => new SubtitleJson
+                    {
+                        Bad = subtitle.Bad,
+                        ImdbId = subtitle.ImdbId,
+                        Iso639 = subtitle.Iso639,
+                        LanguageId = subtitle.LanguageId,
+                        LanguageName = subtitle.LanguageName,
+                        OsdbSubtitleId = subtitle.OsdbSubtitleId,
+                        Rating = subtitle.Rating,
+                        SubtitleDownloadLink = subtitle.SubtitleDownloadLink,
+                        SubtitleFileName = subtitle.SubtitleFileName
+                    }).ToList()
                 }).ToList(),
                 TvdbId = show.TvdbId,
                 AirTime = show.AirTime,
@@ -541,19 +554,7 @@ namespace PopcornApi.Controllers
                 Slug = show.Slug,
                 Status = show.Status,
                 Synopsis = show.Synopsis,
-                Similar = show.Similars.Select(a => a.TmdbId).ToList(),
-                Subtitles = show.Subtitles.Select(subtitle => new SubtitleJson
-                {
-                    Bad = subtitle.Bad,
-                    ImdbId = subtitle.ImdbId,
-                    Iso639 = subtitle.Iso639,
-                    LanguageId = subtitle.LanguageId,
-                    LanguageName = subtitle.LanguageName,
-                    OsdbSubtitleId = subtitle.OsdbSubtitleId,
-                    Rating = subtitle.Rating,
-                    SubtitleDownloadLink = subtitle.SubtitleDownloadLink,
-                    SubtitleFileName = subtitle.SubtitleFileName
-                }).ToList()
+                Similar = show.Similars.Select(a => a.TmdbId).ToList()
             };
         }
     }
