@@ -18,7 +18,6 @@ using System.Text;
 using System.Threading;
 using PopcornApi.Extensions;
 using PopcornApi.Helpers;
-using PopcornApi.Models.Subtitle;
 using Utf8Json.Resolvers;
 using JsonSerializer = Utf8Json.JsonSerializer;
 
@@ -447,7 +446,6 @@ namespace PopcornApi.Controllers
                     .ThenInclude(episode => episode.Torrents)
                     .ThenInclude(torrent => torrent.Torrent480p)
                     .Include(a => a.Episodes)
-                    .ThenInclude(a => a.Subtitles)
                     .Include(a => a.Episodes)
                     .ThenInclude(episode => episode.Torrents)
                     .ThenInclude(torrent => torrent.Torrent720p)
@@ -525,19 +523,7 @@ namespace PopcornApi.Controllers
                     Title = episode.Title,
                     Overview = episode.Overview,
                     Season = episode.Season,
-                    TvdbId = episode.TvdbId,
-                    Subtitles = episode.Subtitles.Select(subtitle => new SubtitleJson
-                    {
-                        Bad = subtitle.Bad,
-                        ImdbId = subtitle.ImdbId,
-                        Iso639 = subtitle.Iso639,
-                        LanguageId = subtitle.LanguageId,
-                        LanguageName = subtitle.LanguageName,
-                        OsdbSubtitleId = subtitle.OsdbSubtitleId,
-                        Rating = subtitle.Rating,
-                        SubtitleDownloadLink = subtitle.SubtitleDownloadLink,
-                        SubtitleFileName = subtitle.SubtitleFileName
-                    }).ToList()
+                    TvdbId = episode.TvdbId
                 }).ToList(),
                 TvdbId = show.TvdbId,
                 AirTime = show.AirTime,

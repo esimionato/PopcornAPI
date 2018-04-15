@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using PopcornApi.Models.Episode;
 using PopcornApi.Models.Image;
 using PopcornApi.Models.Rating;
-using PopcornApi.Models.Subtitle;
 
 namespace PopcornApi.Models.Show
 {
